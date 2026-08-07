@@ -9,6 +9,7 @@ import { AcademicSessionDropdown } from "../../components/common/AcademicSession
 import { RollMappingTab } from "../../components/admin/RollMappingTab.js";
 import { settingsService } from "../../services/settings.service.js";
 import { authService } from "../../services/auth.service.js";
+import { getFormattedLogoUrl } from "../../services/api.js";
 
 export const Settings: React.FC = () => {
   const { dark, setDark } = useTheme();
@@ -455,7 +456,7 @@ export const Settings: React.FC = () => {
                 <label className={cn("block text-xs font-semibold mb-2", textSub)}>Institute Logo Placement</label>
                 {settings.logoUrl ? (
                   <div className="flex flex-col items-center gap-3">
-                    <img src={settings.logoUrl} className="h-24 w-auto object-contain p-2 bg-white rounded-xl border" alt="Logo Preview" />
+                    <img src={getFormattedLogoUrl(settings.logoUrl)} className="h-24 w-auto object-contain p-2 bg-white rounded-xl border" alt="Logo Preview" />
                     <div className="flex gap-2">
                       <label className="px-3 py-1.5 rounded-lg bg-[#0B3D91] text-white text-xs font-semibold hover:bg-[#0a348a] cursor-pointer">
                         Replace Logo

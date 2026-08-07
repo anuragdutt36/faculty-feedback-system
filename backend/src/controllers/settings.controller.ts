@@ -89,7 +89,8 @@ export class SettingsController {
       if (!req.file) {
         return res.status(400).json(ApiResponse.error("No file uploaded"));
       }
-      const logoUrl = `http://localhost:5001/uploads/${req.file.filename}`;
+      const baseUrl = process.env.SERVER_URL || process.env.BACKEND_URL || (req.protocol && req.get("host") ? `${req.protocol}://${req.get("host")}` : "");
+      const logoUrl = baseUrl ? `${baseUrl}/uploads/${req.file.filename}` : `/uploads/${req.file.filename}`;
       const settings = await SettingsService.updateSettings({ logoUrl });
 
       await logAudit({
