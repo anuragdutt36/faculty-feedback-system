@@ -48,22 +48,22 @@ export const StudentDashboard: React.FC = () => {
     if (user) loadSessions();
   }, [user]);
 
-  const subjectsList = activeSessions.flatMap(as =>
-    as.subjects.map((s: any) => ({
-      mappingId: s.mappingId,
-      sessionId: as.session.id,
-      sessionName: as.session.name,
-      facultyId: s.faculty?._id,
-      faculty: s.faculty?.name || "Faculty Member",
-      subjectId: s.subject?._id,
-      subject: s.subject?.name || "Subject",
-      code: s.subject?.code || "SUB-000",
-      course: s.courseName || as.session.courseName || user?.course || "Master of Computer Applications",
-      branch: s.branchCode || as.session.branchCode || user?.branch || "MCA",
-      semester: s.semester || as.session.semester || user?.semester || 1,
-      year: s.year || as.session.year || user?.year || 1,
-      deadline: new Date(as.session.endDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
-      submitted: Boolean(s.submitted),
+  const subjectsList = (activeSessions || []).flatMap(as =>
+    (as?.subjects || []).map((s: any) => ({
+      mappingId: s?.mappingId,
+      sessionId: as?.session?.id || as?.session?._id,
+      sessionName: as?.session?.name || "Feedback Session",
+      facultyId: s?.faculty?._id,
+      faculty: s?.faculty?.name || "Faculty Member",
+      subjectId: s?.subject?._id,
+      subject: s?.subject?.name || "Subject",
+      code: s?.subject?.code || "SUB-000",
+      course: s?.courseName || as?.session?.courseName || user?.course || "Master of Computer Applications",
+      branch: s?.branchCode || as?.session?.branchCode || user?.branch || "MCA",
+      semester: s?.semester || as?.session?.semester || user?.semester || 1,
+      year: s?.year || as?.session?.year || user?.year || 1,
+      deadline: as?.session?.endDate ? new Date(as.session.endDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "N/A",
+      submitted: Boolean(s?.submitted),
     }))
   );
 

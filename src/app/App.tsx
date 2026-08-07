@@ -4,18 +4,21 @@ import { AuthProvider } from "../context/AuthContext.js";
 import { ThemeProvider } from "../context/ThemeContext.js";
 import { SettingsProvider } from "../context/SettingsContext.js";
 import { AppRouter } from "../routes/AppRouter.js";
+import { ErrorBoundary } from "../components/common/ErrorBoundary.js";
 
 export const App: React.FC = () => {
   return (
-    <BrowserRouter>
-      <SettingsProvider>
-        <AuthProvider>
-          <ThemeProvider>
-            <AppRouter />
-          </ThemeProvider>
-        </AuthProvider>
-      </SettingsProvider>
-    </BrowserRouter>
+    <ErrorBoundary>
+      <BrowserRouter>
+        <SettingsProvider>
+          <AuthProvider>
+            <ThemeProvider>
+              <AppRouter />
+            </ThemeProvider>
+          </AuthProvider>
+        </SettingsProvider>
+      </BrowserRouter>
+    </ErrorBoundary>
   );
 };
 

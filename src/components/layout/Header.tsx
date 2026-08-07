@@ -57,6 +57,13 @@ export const Header: React.FC = () => {
     return sub.replace("-", " ");
   };
 
+  const getUserInitials = (name?: string) => {
+    if (!name) return "U";
+    const parts = name.trim().split(/\s+/).filter(Boolean);
+    if (parts.length === 0) return "U";
+    return parts.map(w => w[0]).join("").substring(0, 2).toUpperCase();
+  };
+
   const handleBellClick = () => {
     if (user.role === "student") {
       navigate("/student/notifications");
@@ -110,7 +117,7 @@ export const Header: React.FC = () => {
         {/* User Dropdown */}
         <div className="flex items-center gap-2 cursor-pointer">
           <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#3B82F6] to-[#0B3D91] flex items-center justify-center text-white text-xs font-bold shrink-0">
-            {user.name.split(" ").map(w => w[0]).join("").substring(0, 2).toUpperCase()}
+            {getUserInitials(user.name)}
           </div>
           <div className="hidden md:block">
             <div className={`text-xs font-semibold ${textPrimary}`}>{user.name}</div>
