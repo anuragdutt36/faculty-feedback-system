@@ -11,12 +11,12 @@ export function ModHeader({ title, sub, dark, children }: { title: string; sub?:
   const textPrimary = dark ? "text-white" : "text-[#0D1B3E]";
   const textSub = dark ? "text-blue-200/70" : "text-[#5A6E8E]";
   return (
-    <div className="flex items-start justify-between gap-4 mb-6">
+    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
       <div>
-        <h1 className={cn("text-2xl font-bold", textPrimary)} style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>{title}</h1>
-        {sub && <p className={cn("text-sm mt-0.5", textSub)}>{sub}</p>}
+        <h1 className={cn("text-xl sm:text-2xl font-bold", textPrimary)} style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>{title}</h1>
+        {sub && <p className={cn("text-xs sm:text-sm mt-0.5", textSub)}>{sub}</p>}
       </div>
-      {children && <div className="flex items-center gap-2 shrink-0">{children}</div>}
+      {children && <div className="flex flex-wrap items-center gap-2 shrink-0">{children}</div>}
     </div>
   );
 }
@@ -24,9 +24,9 @@ export function ModHeader({ title, sub, dark, children }: { title: string; sub?:
 export function ModSearchBar({ dark, placeholder = "Search…", value, onChange }: { dark: boolean; placeholder?: string; value: string; onChange: (v: string) => void }) {
   const inputCls = dark ? "bg-white/8 border-white/10 text-white placeholder:text-white/30" : "bg-white border-[#0B3D91]/10 text-[#0D1B3E] placeholder:text-[#5A6E8E]/60";
   return (
-    <div className="relative">
+    <div className="relative w-full sm:w-64">
       <Search size={14} className={cn("absolute left-3 top-1/2 -translate-y-1/2", dark ? "text-white/40" : "text-[#5A6E8E]")} />
-      <input value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder} className={cn("pl-9 pr-4 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-2 focus:ring-[#3B82F6]/30 transition-all w-64", inputCls)} />
+      <input value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder} className={cn("pl-9 pr-4 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-2 focus:ring-[#3B82F6]/30 transition-all w-full", inputCls)} />
     </div>
   );
 }
@@ -34,14 +34,14 @@ export function ModSearchBar({ dark, placeholder = "Search…", value, onChange 
 export function ModSelect({ dark, options, value, onChange }: { dark: boolean; options: string[]; value: string; onChange: (v: string) => void }) {
   const inputCls = dark ? "bg-white/8 border-white/10 text-white" : "bg-white border-[#0B3D91]/10 text-[#0D1B3E]";
   return (
-    <select value={value} onChange={e => onChange(e.target.value)} className={cn("px-3 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-2 focus:ring-[#3B82F6]/30 transition-all", inputCls)}>
+    <select value={value} onChange={e => onChange(e.target.value)} className={cn("px-3 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-2 focus:ring-[#3B82F6]/30 transition-all w-full sm:w-auto", inputCls)}>
       {options.map(o => <option key={o} value={o}>{o}</option>)}
     </select>
   );
 }
 
 export function ModBtn({ children, variant = "primary", onClick, icon: Icon, disabled = false }: { children: React.ReactNode; variant?: "primary" | "outline" | "ghost" | "danger"; onClick?: () => void; icon?: React.ElementType; disabled?: boolean }) {
-  const base = "flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all cursor-pointer disabled:opacity-50 disabled:pointer-events-none";
+  const base = "flex items-center justify-center gap-1.5 px-3.5 sm:px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer disabled:opacity-50 disabled:pointer-events-none";
   const variants = {
     primary: "bg-[#0B3D91] text-white hover:bg-[#0a348a] shadow-md shadow-[#0B3D91]/20",
     outline: "border border-[#0B3D91]/15 text-[#0D1B3E] hover:bg-[#EEF2F8] bg-white",
@@ -60,8 +60,8 @@ export function ModTable({ dark, headers, children, empty, totalCount = 0, page 
 
   return (
     <div className={cn("rounded-2xl border overflow-hidden", dark ? "border-white/10 bg-white/5" : "border-[#0B3D91]/8 bg-white shadow-sm")}>
-      <div className="overflow-x-auto">
-        <table className="w-full text-xs">
+      <div className="overflow-x-auto w-full">
+        <table className="w-full text-xs min-w-[650px]">
           <thead>
             <tr className={thBg}>
               {headers.map(h => <th key={h} className={cn("px-4 py-3 text-left font-semibold whitespace-nowrap", textSub)}>{h}</th>)}
@@ -79,10 +79,10 @@ export function ModTable({ dark, headers, children, empty, totalCount = 0, page 
           </tbody>
         </table>
       </div>
-      <div className={cn("flex items-center justify-between px-4 py-2.5 border-t", dark ? "border-white/8 bg-white/4" : "border-[#0B3D91]/8 bg-[#EEF2F8]")}>
+      <div className={cn("flex flex-col sm:flex-row items-center justify-between gap-2 px-4 py-2.5 border-t text-center sm:text-left", dark ? "border-white/8 bg-white/4" : "border-[#0B3D91]/8 bg-[#EEF2F8]")}>
         <span className={cn("text-[10px]", textSub)}>Showing {totalCount > 0 ? (page - 1) * 10 + 1 : 0} - {Math.min(totalCount, page * 10)} of {totalCount} results</span>
         {totalPages > 1 && (
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1 flex-wrap justify-center">
             <button
               type="button"
               onClick={() => onPageChange?.(Math.max(1, page - 1))}

@@ -169,20 +169,20 @@ export const LoginPage: React.FC = () => {
       </div>
 
       {/* Right pane - form */}
-      <div className="flex-1 flex flex-col items-center justify-center p-8 bg-[#EEF2F8]">
+      <div className="flex-1 flex flex-col items-center justify-center p-4 sm:p-8 bg-[#EEF2F8] min-h-screen lg:min-h-0">
         <div className="w-full max-w-md relative">
-          <div className="flex lg:hidden items-center justify-center gap-3 mb-8">
-            <LogoMark size={40} dark={false} />
+          <div className="flex lg:hidden items-center justify-center gap-3 mb-6 sm:mb-8 text-center">
+            <LogoMark size={36} dark={false} />
             <div>
-              <div className="text-[#0D1B3E] font-bold text-sm" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>{systemName} Faculty Feedback System</div>
-              <div className="text-[#5A6E8E] text-xs">{instituteName}</div>
+              <div className="text-[#0D1B3E] font-bold text-xs sm:text-sm leading-tight" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>{systemName} Faculty Feedback System</div>
+              <div className="text-[#5A6E8E] text-[11px]">{instituteName}</div>
             </div>
           </div>
           
-          <div className="bg-white rounded-3xl shadow-xl shadow-[#0B3D91]/8 border border-[#0B3D91]/8 p-8">
+          <div className="bg-white rounded-3xl shadow-xl shadow-[#0B3D91]/8 border border-[#0B3D91]/8 p-5 sm:p-8">
             <div className="mb-6">
-              <h1 className="text-2xl font-bold text-[#0D1B3E] mb-1" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Welcome back</h1>
-              <p className="text-[#5A6E8E] text-sm">Sign in to your account to continue</p>
+              <h1 className="text-xl sm:text-2xl font-bold text-[#0D1B3E] mb-1" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Welcome back</h1>
+              <p className="text-[#5A6E8E] text-xs sm:text-sm">Sign in to your account to continue</p>
             </div>
             
             {/* Role selector tabs */}

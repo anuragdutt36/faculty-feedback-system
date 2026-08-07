@@ -116,21 +116,21 @@ export const AdminDashboard: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Title Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className={`text-2xl font-bold ${textPrimary}`} style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+          <h1 className={`text-xl sm:text-2xl font-bold ${textPrimary}`} style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
             Welcome, {user?.name || "Admin"} 👋
           </h1>
-          <p className={`text-sm mt-0.5 ${textSub}`}>
+          <p className={`text-xs sm:text-sm mt-0.5 ${textSub}`}>
             Academic Session {"2026-27"} feedback status &nbsp;·&nbsp; 
             <span className="text-emerald-500 font-semibold"> {metrics.activeSessions} active sessions</span>
             <span className="text-gray-400 font-semibold"> ({metrics.closedSessions} closed)</span>
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex items-center gap-2">
           <button 
             onClick={loadDashboardData}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold border transition-all hover:scale-105 cursor-pointer ${
+            className={`flex-1 sm:flex-none justify-center flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs sm:text-sm font-semibold border transition-all hover:scale-105 cursor-pointer ${
               dark ? "border-white/10 bg-white/5 text-white" : "border-[#0B3D91]/10 bg-white text-[#0D1B3E]"
             }`}
           >
@@ -138,7 +138,7 @@ export const AdminDashboard: React.FC = () => {
           </button>
           <button
             onClick={() => navigate("/admin/sessions")}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold bg-[#0B3D91] text-white hover:bg-[#0a348a] transition-all shadow-md shadow-[#0B3D91]/25 cursor-pointer border-0"
+            className="flex-1 sm:flex-none justify-center flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs sm:text-sm font-semibold bg-[#0B3D91] text-white hover:bg-[#0a348a] transition-all shadow-md shadow-[#0B3D91]/25 cursor-pointer border-0"
           >
             <Plus size={14} /> New Session
           </button>
@@ -153,7 +153,7 @@ export const AdminDashboard: React.FC = () => {
       ) : (
         <>
           {/* Metric Cards */}
-          <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">
             {cards.map(({ label, value, sub, icon: Icon, color }) => (
               <div
                 key={label}

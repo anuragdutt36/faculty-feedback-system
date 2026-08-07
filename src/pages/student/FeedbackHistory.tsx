@@ -47,8 +47,8 @@ export const FeedbackHistory: React.FC = () => {
         <p className={`text-xs ${textSub}`}>Only submission status is displayed. Your individual responses are permanently anonymized and cannot be retrieved.</p>
       </div>
 
-      <div className={`rounded-2xl border ${border} ${cardBg} shadow-sm overflow-hidden`}>
-        <table className="w-full text-xs">
+      <div className={`rounded-2xl border ${border} ${cardBg} shadow-sm overflow-x-auto`}>
+        <table className="w-full text-xs min-w-[600px]">
           <thead>
             <tr className={tableHeaderBg}>
               {["Subject", "Faculty", "Session", "Date", "Status"].map((h) => (

@@ -110,7 +110,7 @@ export const StudentDashboard: React.FC = () => {
     <div className="space-y-6">
       {/* Welcome */}
       <div
-        className={`rounded-2xl p-6 border shadow-sm ${
+        className={`rounded-2xl p-4 sm:p-6 border shadow-sm ${
           dark ? "border-white/10 bg-white/5" : "border-[#0B3D91]/8 bg-white"
         }`}
         style={{
@@ -122,11 +122,11 @@ export const StudentDashboard: React.FC = () => {
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className={`${textSub} text-xs font-semibold uppercase tracking-wider mb-1`}>Welcome back</p>
-            <h1 className={`text-3xl font-extrabold tracking-tight ${textPrimary} mb-1`} style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+            <h1 className={`text-2xl sm:text-3xl font-extrabold tracking-tight ${textPrimary} mb-1`} style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
               {user?.name || "Student"}
             </h1>
             {rollNumberDisplay && (
-              <p className="text-sm font-semibold text-[#0B3D91] dark:text-blue-400 font-mono tracking-wide mb-2.5">
+              <p className="text-xs sm:text-sm font-semibold text-[#0B3D91] dark:text-blue-400 font-mono tracking-wide mb-2.5">
                 Roll No: {rollNumberDisplay}
               </p>
             )}
@@ -148,8 +148,8 @@ export const StudentDashboard: React.FC = () => {
               ))}
             </div>
           </div>
-          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#3B82F6] to-[#0B3D91] flex items-center justify-center shrink-0">
-            <GraduationCap size={28} className="text-white" strokeWidth={1.5} />
+          <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-br from-[#3B82F6] to-[#0B3D91] flex items-center justify-center shrink-0">
+            <GraduationCap size={24} className="text-white sm:w-7 sm:h-7" strokeWidth={1.5} />
           </div>
         </div>
         <div className={`mt-5 pt-5 border-t ${dark ? "border-white/10" : "border-[#0B3D91]/8"}`}>
@@ -174,7 +174,7 @@ export const StudentDashboard: React.FC = () => {
       <PrivacyBanner />
 
       {/* Metric cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {[
           { label: "Active Sessions", value: String(activeSessions.length), sub: "Active Feedback Campaigns", icon: Activity, color: "bg-[#0B3D91]" },
           { label: "Pending Feedback", value: String(pending), sub: `${pending} subjects remaining`, icon: ClipboardList, color: "bg-amber-500" },

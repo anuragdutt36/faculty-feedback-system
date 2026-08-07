@@ -221,7 +221,7 @@ export const AcademicStructure: React.FC = () => {
       )}
 
       {/* Tabs */}
-      <div className={cn("flex gap-1 p-1 rounded-2xl mb-6 w-fit", dark ? "bg-white/8" : "bg-[#EEF2F8]")}>
+      <div className={cn("flex flex-wrap gap-1 p-1 rounded-2xl mb-6 w-full sm:w-fit", dark ? "bg-white/8" : "bg-[#EEF2F8]")}>
         {tabs.map((t) => (
           <button
             key={t}
@@ -230,7 +230,7 @@ export const AcademicStructure: React.FC = () => {
               setSearch("");
             }}
             className={cn(
-              "px-5 py-2.5 rounded-xl text-sm font-semibold capitalize transition-all cursor-pointer border-0",
+              "flex-1 sm:flex-none px-4 sm:px-5 py-2.5 rounded-xl text-xs sm:text-sm font-semibold capitalize transition-all cursor-pointer border-0 text-center",
               tab === t
                 ? "bg-[#0B3D91] text-white shadow-md"
                 : dark
@@ -243,7 +243,7 @@ export const AcademicStructure: React.FC = () => {
         ))}
       </div>
 
-      <div className="flex items-center gap-3 mb-4 max-w-md">
+      <div className="flex items-center gap-3 mb-4 w-full sm:max-w-md">
         <ModSearchBar dark={dark} placeholder={`Search ${tab}…`} value={search} onChange={setSearch} />
       </div>
 

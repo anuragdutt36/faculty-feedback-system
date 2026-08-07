@@ -158,8 +158,8 @@ export const Notifications: React.FC = () => {
       </div>
 
       {/* Search + Mark all read */}
-      <div className="flex items-center gap-3">
-        <div className="relative flex-1 max-w-sm">
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+        <div className="relative flex-1 max-w-full sm:max-w-sm">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#5A6E8E]" />
           <input
             value={search}
@@ -175,7 +175,7 @@ export const Notifications: React.FC = () => {
         {unreadCount > 0 && (
           <button
             onClick={markAllRead}
-            className={`flex items-center gap-1.5 px-4 py-2.5 rounded-xl border text-xs font-semibold transition-all cursor-pointer ${
+            className={`flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl border text-xs font-semibold transition-all cursor-pointer ${
               dark
                 ? "bg-white/5 border-white/10 text-white hover:bg-white/10"
                 : "bg-white border-[#0B3D91]/10 text-[#0B3D91] hover:bg-[#EEF2F8]"

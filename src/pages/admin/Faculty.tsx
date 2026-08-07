@@ -408,7 +408,7 @@ export const Faculty: React.FC = () => {
       )}
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         {[
           { label: "Total Faculty", value: totalCount, icon: Users, color: "bg-[#0B3D91]" },
           { label: "Active Faculty", value: activeCount, icon: UserCheck, color: "bg-emerald-500" },
@@ -424,11 +424,11 @@ export const Faculty: React.FC = () => {
       </div>
 
       {/* Filter and Search controls */}
-      <div className="flex flex-wrap items-center gap-3 mb-4">
+      <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-3 mb-4">
         <ModSearchBar dark={dark} placeholder="Search by name, email or phone…" value={search} onChange={setSearch} />
         
         <select
-          className={cn("px-4 py-2.5 rounded-xl border text-sm focus:outline-none cursor-pointer", dark ? "bg-white/8 border-white/10 text-white" : "bg-[#F0F4FA] border-[#0B3D91]/10 text-[#0D1B3E]")}
+          className={cn("px-4 py-2.5 rounded-xl border text-sm focus:outline-none cursor-pointer w-full sm:w-auto", dark ? "bg-white/8 border-white/10 text-white" : "bg-[#F0F4FA] border-[#0B3D91]/10 text-[#0D1B3E]")}
           value={selectedStatus}
           onChange={(e) => setSelectedStatus(e.target.value)}
         >

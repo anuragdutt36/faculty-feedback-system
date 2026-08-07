@@ -1,13 +1,17 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useLocation, useNavigate } from "react-router";
-import { Bell, ChevronRight, Sun, Moon, ChevronDown } from "lucide-react";
+import { Bell, ChevronRight, Sun, Moon, ChevronDown, Menu } from "lucide-react";
 import { useAuth } from "../../context/AuthContext.js";
 import { useTheme } from "../../context/ThemeContext.js";
 import { useSettings } from "../../context/SettingsContext.js";
 import { LogoMark } from "../common/LogoMark.js";
 import { notificationService } from "../../services/notification.service.js";
 
-export const Header: React.FC = () => {
+interface HeaderProps {
+  onToggleMobileMenu?: () => void;
+}
+
+export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
   const { user } = useAuth();
   const { dark, setDark } = useTheme();
   const { systemName } = useSettings();
@@ -71,19 +75,30 @@ export const Header: React.FC = () => {
   };
 
   return (
-    <header className={`flex items-center justify-between px-6 py-3.5 border-b sticky top-0 z-20 backdrop-blur-sm ${
+    <header className={`flex items-center justify-between px-4 sm:px-6 py-3.5 border-b sticky top-0 z-20 backdrop-blur-sm ${
       dark ? "border-white/8 bg-[#0D1B3E]/90" : "border-[#0B3D91]/8 bg-[#EEF2F8]/90"
     }`}>
-      <div className="flex items-center gap-2 text-sm">
+      <div className="flex items-center gap-2 text-xs sm:text-sm min-w-0">
+        {/* Mobile menu toggle button */}
+        <button
+          onClick={onToggleMobileMenu}
+          aria-label="Open Navigation Menu"
+          className={`lg:hidden p-2 rounded-xl border transition-all cursor-pointer shrink-0 ${
+            dark ? "border-white/10 bg-white/5 text-white" : "border-[#0B3D91]/10 bg-white text-[#0D1B3E]"
+          }`}
+        >
+          <Menu size={18} />
+        </button>
+
         <LogoMark size={24} dark={dark} />
-        <span className={textSub}>{systemName} Faculty Feedback System</span>
-        <ChevronRight size={14} className={textSub} />
-        <span className={`font-semibold capitalize ${textPrimary}`}>
+        <span className={`hidden sm:inline ${textSub} truncate`}>{systemName} Faculty Feedback System</span>
+        <ChevronRight size={14} className={`hidden sm:inline shrink-0 ${textSub}`} />
+        <span className={`font-semibold capitalize ${textPrimary} truncate`}>
           {getBreadcrumbName()}
         </span>
       </div>
 
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2 sm:gap-3 shrink-0">
 
         {/* Notifications bell — student only */}
         {user.role === "student" && (
@@ -91,7 +106,7 @@ export const Header: React.FC = () => {
             id="header-notifications-bell"
             onClick={handleBellClick}
             title="Notifications"
-            className={`relative p-2.5 rounded-xl border transition-all hover:scale-105 cursor-pointer ${
+            className={`relative p-2 sm:p-2.5 rounded-xl border transition-all hover:scale-105 cursor-pointer ${
               dark ? "border-white/10 bg-white/5 text-white" : "border-[#0B3D91]/10 bg-white text-[#0D1B3E]"
             }`}
           >
@@ -107,7 +122,7 @@ export const Header: React.FC = () => {
         {/* Theme toggle */}
         <button
           onClick={() => setDark(!dark)}
-          className={`p-2.5 rounded-xl border transition-all hover:scale-105 cursor-pointer ${
+          className={`p-2 sm:p-2.5 rounded-xl border transition-all hover:scale-105 cursor-pointer ${
             dark ? "border-white/10 bg-white/5 text-white" : "border-[#0B3D91]/10 bg-white text-[#0D1B3E]"
           }`}
         >

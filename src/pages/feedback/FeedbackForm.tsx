@@ -317,7 +317,7 @@ export const FeedbackForm: React.FC = () => {
                  {currentQ?.text}
                </p>
                
-               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3">
+               <div className="grid grid-cols-5 gap-1.5 sm:gap-3">
                  {ratingOptions.map((opt) => {
                    const selected = ratings[currentQ._id] === opt.value;
                    const colorCls = ratingColors[opt.value];
@@ -333,13 +333,13 @@ export const FeedbackForm: React.FC = () => {
                          }
                        }}
                        className={cn(
-                         "flex flex-col items-center justify-center p-4 rounded-2xl border-2 transition-all cursor-pointer disabled:opacity-50",
+                         "flex flex-col items-center justify-center p-2 sm:p-4 rounded-xl sm:rounded-2xl border-2 transition-all cursor-pointer disabled:opacity-50 min-w-0",
                          selected ? colorCls : dark ? "border-white/10 bg-white/5 text-white hover:border-white/30" : "border-[#0B3D91]/10 bg-[#EEF2F8] text-[#5A6E8E] hover:border-[#0B3D91]/30"
                        )}
                      >
-                       <Star size={24} className={cn("mb-2", selected ? "fill-current" : "")} />
-                       <span className="text-sm font-bold">{opt.value}</span>
-                       <span className="text-[10px] uppercase tracking-wider opacity-80">{opt.label}</span>
+                       <Star size={18} className={cn("mb-1 sm:mb-2 sm:w-6 sm:h-6", selected ? "fill-current" : "")} />
+                       <span className="text-xs sm:text-sm font-bold">{opt.value}</span>
+                       <span className="text-[9px] sm:text-[10px] uppercase tracking-wider opacity-80 truncate max-w-full">{opt.label}</span>
                      </button>
                    );
                  })}
