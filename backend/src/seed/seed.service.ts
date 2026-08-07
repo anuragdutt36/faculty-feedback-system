@@ -51,10 +51,13 @@ export class SeedService {
     // 1. Ensure admin user exists
     const adminExists = await User.findOne({ role: "admin" });
     if (!adminExists) {
+      const adminEmail = process.env.DEFAULT_ADMIN_EMAIL || "admin@knit.ac.in";
+      const adminPassword = process.env.DEFAULT_ADMIN_PASSWORD || "Admin@KNIT2026!";
+      
       const salt = await bcrypt.genSalt(12);
-      const hash = await bcrypt.hash("Admin@KNIT2026!", salt);
+      const hash = await bcrypt.hash(adminPassword, salt);
       await User.create({
-        username: "admin@knit.ac.in",
+        username: adminEmail,
         password: hash,
         role: "admin",
         status: "active",
