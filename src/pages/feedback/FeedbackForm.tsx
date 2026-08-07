@@ -302,7 +302,17 @@ export const FeedbackForm: React.FC = () => {
 
         {/* Paginated Questions */}
         <div className="space-y-4">
-          {currentQ && (
+          {questions.length === 0 ? (
+            <div className={cn("rounded-3xl p-8 border shadow-sm text-center", cardBg)}>
+              <div className="w-14 h-14 rounded-2xl bg-amber-100 border border-amber-200 flex items-center justify-center mx-auto mb-4 dark:bg-amber-900/30 dark:border-amber-800">
+                <AlertOctagon size={24} className="text-amber-600 dark:text-amber-400" />
+              </div>
+              <h3 className={cn("font-bold text-lg mb-2", textPrimary)}>No Questions Configured</h3>
+              <p className={cn("text-sm", textSub)}>
+                This feedback session has no active questions. Please notify the administration to configure questions for this session.
+              </p>
+            </div>
+          ) : currentQ ? (
             <div className={cn("rounded-3xl p-8 border shadow-sm transition-all duration-300", cardBg)}>
                <div className="flex items-center justify-between mb-6">
                  <span className={cn("px-3 py-1 rounded-full text-xs font-bold", dark ? "bg-white/10 text-white" : "bg-[#0B3D91]/10 text-[#0B3D91]")}>
@@ -345,7 +355,7 @@ export const FeedbackForm: React.FC = () => {
                  })}
                </div>
             </div>
-          )}
+          ) : null}
 
           {/* Navigation */}
           <div className="flex items-center justify-between pt-4">

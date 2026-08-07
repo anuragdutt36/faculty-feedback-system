@@ -179,6 +179,9 @@ export class SessionsService {
     }
 
     const activeQuestions = await Question.find({ status: "active" }).sort({ order: 1 });
+    if (activeQuestions.length === 0) {
+      throw new CustomError("Cannot create a session because there are no active questions in the Question Bank.", 400);
+    }
     const questionIds = activeQuestions.map((q) => q._id);
 
     let status: "draft" | "scheduled" | "active" | "closed" = "scheduled";
@@ -267,6 +270,9 @@ export class SessionsService {
     }
 
     const activeQuestions = await Question.find({ status: "active" }).sort({ order: 1 });
+    if (activeQuestions.length === 0) {
+      throw new CustomError("Cannot activate this session because there are no active questions in the Question Bank.", 400);
+    }
     session.questions = activeQuestions.map((q) => q._id) as any;
 
     await session.save();
