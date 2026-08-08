@@ -164,12 +164,12 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen, mobileOpen,
       <div className="px-3 py-3 border-t border-white/10 space-y-0.5">
         <button
           onClick={handleLogout}
-          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-red-300/80 hover:bg-red-500/10 hover:text-red-200 transition-all cursor-pointer"
+          className={`w-full flex items-center ${showFullLabels ? "gap-3 px-3 justify-start" : "justify-center px-0"} py-2.5 rounded-xl text-sm font-medium text-red-300/80 hover:bg-red-500/10 hover:text-red-200 transition-all cursor-pointer`}
         >
           <LogOut size={17} className="shrink-0" />
           {showFullLabels && <span>Logout</span>}
         </button>
-        <div className="flex items-center gap-3 px-3 py-2.5 mt-2 rounded-xl bg-white/8 border border-white/10">
+        <div className={`flex items-center ${showFullLabels ? "gap-3 px-3" : "justify-center px-0"} py-2.5 mt-2 rounded-xl bg-white/8 border border-white/10`}>
           <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[#3B82F6] to-[#0B3D91] flex items-center justify-center text-white text-xs font-bold shrink-0">
             {getUserInitials(user.name)}
           </div>

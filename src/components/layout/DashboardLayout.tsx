@@ -6,7 +6,7 @@ import { useTheme } from "../../context/ThemeContext.js";
 
 export const DashboardLayout: React.FC = () => {
   const { dark } = useTheme();
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(window.innerWidth > 768);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const bg = dark ? "bg-[#0D1B3E]" : "bg-[#EEF2F8]";
