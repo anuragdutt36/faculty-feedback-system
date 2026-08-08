@@ -1,5 +1,6 @@
 {
   "compilerOptions": {
+    "types": ["node"],
     "target": "ES2022",
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
@@ -13,5 +14,5 @@
     "resolveJsonModule": true,
     "declaration": true
   },
-  "include": ["src/**/*"]
+  "include": ["src/**/*", "*.ts"]
 }

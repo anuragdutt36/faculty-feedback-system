@@ -135,6 +135,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           year: prof?.year,
           academicSession: prof?.academicSession || "2025-26",
         };
+        console.log("[DEBUG] User profile fetched for:", u.username);
+        console.log("[DEBUG] Roll-number mapping applied:", newUser.rollNumber);
         setUser(newUser);
         localStorage.setItem("knit-user", JSON.stringify(newUser));
       } else {

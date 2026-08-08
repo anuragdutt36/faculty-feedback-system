@@ -45,8 +45,18 @@ export const StudentDashboard: React.FC = () => {
   };
 
   useEffect(() => {
-    if (user) loadSessions();
+    if (user) {
+      console.log("[DEBUG] Dashboard route entered. Loading sessions for:", user.username);
+      loadSessions();
+    }
   }, [user]);
+
+  const safelyFormatDate = (dateString?: string) => {
+    if (!dateString) return "N/A";
+    const d = new Date(dateString);
+    if (isNaN(d.getTime())) return "N/A";
+    return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  };
 
   const subjectsList = (activeSessions || []).flatMap(as =>
     (as?.subjects || []).map((s: any) => ({
@@ -62,7 +72,7 @@ export const StudentDashboard: React.FC = () => {
       branch: s?.branchCode || as?.session?.branchCode || user?.branch || "MCA",
       semester: s?.semester || as?.session?.semester || user?.semester || 1,
       year: s?.year || as?.session?.year || user?.year || 1,
-      deadline: as?.session?.endDate ? new Date(as.session.endDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "N/A",
+      deadline: safelyFormatDate(as?.session?.endDate),
       submitted: Boolean(s?.submitted),
     }))
   );

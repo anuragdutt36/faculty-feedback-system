@@ -34,9 +34,12 @@ export const LoginPage: React.FC = () => {
   const handleGoogleCredential = async (idToken: string) => {
     setLoadingState(true);
     setErrorMsg("");
+    console.log("[DEBUG] Token received, initiating googleLogin...");
     try {
       await googleLogin(idToken);
+      console.log("[DEBUG] googleLogin completed successfully.");
     } catch (err: any) {
+      console.error("[DEBUG] googleLogin error:", err);
       setErrorMsg(err.message || "Google Sign-In failed. Only official institution emails registered in records are allowed.");
       setLoadingState(false);
     }
@@ -57,10 +60,12 @@ export const LoginPage: React.FC = () => {
           win.google.accounts.id.initialize({
             client_id: "695413120178-m1g87ivdavmsm5m8tjs7391ga30evhf1.apps.googleusercontent.com",
             callback: (response: any) => {
+              console.log("[DEBUG] Google One Tap callback success:", !!response.credential);
               if (response.credential) {
                 handleGoogleCredential(response.credential);
               }
-            }
+            },
+            ux_mode: "popup",
           });
           win.google.accounts.id.renderButton(
             document.getElementById("google-signin-btn"),
