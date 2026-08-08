@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "bcrypt": "^5.1.1",
+    "cloudinary": "^1.41.3",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "exceljs": "^4.4.0",
@@ -24,6 +25,7 @@
     "mongoose": "^8.4.0",
     "morgan": "^1.10.0",
     "multer": "^2.2.0",
+    "multer-storage-cloudinary": "^4.0.0",
     "pdfkit": "^0.15.0",
     "winston": "^3.13.0"
   },

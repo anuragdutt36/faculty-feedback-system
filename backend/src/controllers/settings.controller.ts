@@ -89,8 +89,8 @@ export class SettingsController {
       if (!req.file) {
         return res.status(400).json(ApiResponse.error("No file uploaded"));
       }
-      const baseUrl = process.env.SERVER_URL || process.env.BACKEND_URL || (req.protocol && req.get("host") ? `${req.protocol}://${req.get("host")}` : "");
-      const logoUrl = baseUrl ? `${baseUrl}/uploads/${req.file.filename}` : `/uploads/${req.file.filename}`;
+      // With multer-storage-cloudinary, the uploaded URL is available in req.file.path
+      const logoUrl = req.file.path;
       const settings = await SettingsService.updateSettings({ logoUrl });
 
       await logAudit({
@@ -110,11 +110,15 @@ export class SettingsController {
     try {
       const settings = await SettingsService.getSettings();
       if (settings.logoUrl) {
-        const filename = settings.logoUrl.split("/").pop();
-        if (filename) {
-          const filepath = path.join(process.cwd(), "uploads", filename);
-          if (fs.existsSync(filepath)) {
-            fs.unlinkSync(filepath);
+        // Optional: Extract Cloudinary public ID and delete it
+        const matches = settings.logoUrl.match(/\/v\d+\/(ffms_logos\/[^.]+)/);
+        if (matches && matches[1]) {
+          const publicId = matches[1];
+          const { v2: cloudinary } = require("cloudinary");
+          try {
+            await cloudinary.uploader.destroy(publicId);
+          } catch (e) {
+            console.error("Cloudinary deletion failed:", e);
           }
         }
       }
