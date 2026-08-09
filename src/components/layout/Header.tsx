@@ -281,9 +281,8 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
         </div>
       </div>
 
-      {/* Desktop Horizontal Navigation Bar (md & lg screens >= 768px) */}
       <nav
-        className={`hidden md:flex items-center px-4 sm:px-6 h-11 sm:h-12 border-b overflow-x-auto scrollbar-none gap-1 sm:gap-1.5 transition-colors ${subnavBg}`}
+        className={`hidden md:flex items-center justify-center px-4 sm:px-6 h-11 sm:h-12 border-b overflow-x-auto scrollbar-none gap-1 sm:gap-1.5 transition-colors ${subnavBg}`}
         aria-label="Main Navigation"
       >
         {navLinks.map((link) => {
