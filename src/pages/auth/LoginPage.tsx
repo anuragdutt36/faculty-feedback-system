@@ -51,28 +51,47 @@ export const LoginPage: React.FC = () => {
 
   useEffect(() => {
     if (role === "student" && googleLoginEnabled) {
+      let interval: any;
+      let attempts = 0;
+
       const initGoogle = () => {
         const win = window as any;
         const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || "";
-        if (win.google && win.google.accounts && clientId) {
-          win.google.accounts.id.initialize({
-            client_id: clientId,
-            callback: (response: any) => {
-              if (response.credential) {
-                handleGoogleCredential(response.credential);
-              }
-            },
-            ux_mode: "popup",
-          });
-          win.google.accounts.id.renderButton(
-            document.getElementById("google-signin-btn"),
-            { theme: "outline", size: "large", width: 340 }
-          );
+        const btnContainer = document.getElementById("google-signin-btn");
+
+        if (win.google && win.google.accounts && clientId && btnContainer) {
+          try {
+            win.google.accounts.id.initialize({
+              client_id: clientId,
+              callback: (response: any) => {
+                if (response.credential) {
+                  handleGoogleCredential(response.credential);
+                }
+              },
+              ux_mode: "popup",
+            });
+            win.google.accounts.id.renderButton(
+              btnContainer,
+              { theme: "outline", size: "large", width: 320 }
+            );
+            if (interval) clearInterval(interval);
+          } catch (e) {
+            console.error("Google button initialization error:", e);
+          }
+        }
+
+        attempts++;
+        if (attempts > 20 && interval) {
+          clearInterval(interval);
         }
       };
 
-      const timer = setTimeout(initGoogle, 500);
-      return () => clearTimeout(timer);
+      interval = setInterval(initGoogle, 250);
+      initGoogle();
+
+      return () => {
+        if (interval) clearInterval(interval);
+      };
     }
   }, [role, googleLoginEnabled]);
 
