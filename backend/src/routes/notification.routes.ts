@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { authenticate, authorize } from "../middleware/auth.js";
 import { NotificationController } from "../controllers/notification.controller.js";
+import { validateObjectId } from "../middleware/validateObjectId.js";
 
 const router = Router();
 
@@ -17,9 +18,9 @@ router.get("/unread-count", NotificationController.getUnreadCount);
 router.put("/read-all", NotificationController.markAllRead);
 
 // PUT /api/notifications/:id/read — mark one as read
-router.put("/:id/read", NotificationController.markOneRead);
+router.put("/:id/read", validateObjectId("id"), NotificationController.markOneRead);
 
 // DELETE /api/notifications/:id — delete one notification
-router.delete("/:id", NotificationController.deleteOne);
+router.delete("/:id", validateObjectId("id"), NotificationController.deleteOne);
 
 export default router;

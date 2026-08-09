@@ -1,6 +1,7 @@
+export const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5001/api";
+
 export const getBackendOrigin = (): string => {
-  const apiBase = import.meta.env.VITE_API_URL || "http://localhost:5001/api";
-  return apiBase.replace(/\/api\/?$/, "");
+  return API_BASE_URL.replace(/\/api\/?$/, "");
 };
 
 export const getFormattedLogoUrl = (url?: string): string => {
@@ -56,7 +57,6 @@ export const apiDownload = async (endpoint: string, filename: string) => {
   if (token) {
     headers["Authorization"] = `Bearer ${token}`;
   }
-  const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5001/api";
   const response = await fetch(`${API_BASE_URL}${endpoint}`, { headers });
   if (!response.ok) throw new Error("Download failed");
   const blob = await response.blob();

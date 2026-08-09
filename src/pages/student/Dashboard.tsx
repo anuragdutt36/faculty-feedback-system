@@ -117,7 +117,7 @@ export const StudentDashboard: React.FC = () => {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6 w-full max-w-full overflow-x-hidden">
       {/* Welcome */}
       <div
         className={`rounded-2xl p-4 sm:p-6 border shadow-sm ${
@@ -129,27 +129,27 @@ export const StudentDashboard: React.FC = () => {
             : "linear-gradient(135deg, #ffffff 60%, #EEF2F8)"
         }}
       >
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <p className={`${textSub} text-xs font-semibold uppercase tracking-wider mb-1`}>Welcome back</p>
-            <h1 className={`text-2xl sm:text-3xl font-extrabold tracking-tight ${textPrimary} mb-1`} style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+        <div className="flex items-start justify-between gap-3 sm:gap-4">
+          <div className="min-w-0 flex-1">
+            <p className={`${textSub} text-[10px] sm:text-xs font-semibold uppercase tracking-wider mb-0.5 sm:mb-1`}>Welcome back</p>
+            <h1 className={`text-xl sm:text-3xl font-extrabold tracking-tight ${textPrimary} mb-1 truncate`} style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
               {user?.name || "Student"}
             </h1>
             {rollNumberDisplay && (
-              <p className="text-xs sm:text-sm font-semibold text-[#0B3D91] dark:text-blue-400 font-mono tracking-wide mb-2.5">
+              <p className="text-xs sm:text-sm font-semibold text-[#0B3D91] dark:text-blue-400 font-mono tracking-wide mb-2">
                 Roll No: {rollNumberDisplay}
               </p>
             )}
             {user?.course && (
-              <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2.5">
+              <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2 truncate">
                 {user.course}
               </p>
             )}
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-1.5 sm:gap-2">
               {studentTags.map((tag) => (
                 <span
                   key={tag}
-                  className={`px-2.5 py-1 rounded-lg text-xs font-semibold ${
+                  className={`px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-lg text-[10px] sm:text-xs font-semibold ${
                     dark ? "bg-white/10 text-white" : "bg-[#EEF2F8] text-[#0B3D91]"
                   }`}
                 >
@@ -158,16 +158,16 @@ export const StudentDashboard: React.FC = () => {
               ))}
             </div>
           </div>
-          <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-br from-[#3B82F6] to-[#0B3D91] flex items-center justify-center shrink-0">
-            <GraduationCap size={24} className="text-white sm:w-7 sm:h-7" strokeWidth={1.5} />
+          <div className="w-10 h-10 sm:w-16 sm:h-16 rounded-xl sm:rounded-2xl bg-gradient-to-br from-[#3B82F6] to-[#0B3D91] flex items-center justify-center shrink-0">
+            <GraduationCap size={20} className="text-white sm:w-7 sm:h-7" strokeWidth={1.5} />
           </div>
         </div>
-        <div className={`mt-5 pt-5 border-t ${dark ? "border-white/10" : "border-[#0B3D91]/8"}`}>
+        <div className={`mt-4 sm:mt-5 pt-4 sm:pt-5 border-t ${dark ? "border-white/10" : "border-[#0B3D91]/8"}`}>
           <div className="flex items-center justify-between mb-2">
-            <span className={`text-xs font-semibold ${textPrimary}`}>Feedback Progress — Academic Session</span>
-            <span className={`text-xs font-bold ${dark ? "text-blue-300" : "text-[#0B3D91]"}`}>{submitted}/{total} submitted</span>
+            <span className={`text-[11px] sm:text-xs font-semibold ${textPrimary}`}>Feedback Progress</span>
+            <span className={`text-[11px] sm:text-xs font-bold ${dark ? "text-blue-300" : "text-[#0B3D91]"}`}>{submitted}/{total} submitted</span>
           </div>
-          <div className={`h-2.5 rounded-full overflow-hidden ${dark ? "bg-white/10" : "bg-[#EEF2F8]"}`}>
+          <div className={`h-2 sm:h-2.5 rounded-full overflow-hidden ${dark ? "bg-white/10" : "bg-[#EEF2F8]"}`}>
             <div
               className="h-full rounded-full bg-gradient-to-r from-[#0B3D91] to-[#3B82F6] transition-all"
               style={{ width: `${progress}%` }}
@@ -183,8 +183,8 @@ export const StudentDashboard: React.FC = () => {
       {/* Privacy Banner */}
       <PrivacyBanner />
 
-      {/* Metric cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* Metric cards (2-column on mobile, 4-column on desktop) */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
         {[
           { label: "Active Sessions", value: String(activeSessions.length), sub: "Active Feedback Campaigns", icon: Activity, color: "bg-[#0B3D91]" },
           { label: "Pending Feedback", value: String(pending), sub: `${pending} subjects remaining`, icon: ClipboardList, color: "bg-amber-500" },
@@ -193,12 +193,12 @@ export const StudentDashboard: React.FC = () => {
         ].map(({ label, value, sub, icon: Icon, color }) => (
           <div
             key={label}
-            className={`rounded-2xl p-5 border shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all cursor-default ${cardBg}`}
+            className={`rounded-2xl p-4 sm:p-5 border shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all cursor-default w-full ${cardBg}`}
           >
-            <div className={`w-10 h-10 rounded-xl flex items-center justify-center mb-4 ${color}`}>
-              <Icon size={18} className="text-white" />
+            <div className={`w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center mb-3 sm:mb-4 ${color}`}>
+              <Icon size={16} className="text-white sm:w-[18px] sm:h-[18px]" />
             </div>
-            <div className={`text-2xl font-bold mb-0.5 ${textPrimary}`} style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>{value}</div>
+            <div className={`text-xl sm:text-2xl font-bold mb-0.5 ${textPrimary}`} style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>{value}</div>
             <div className={`text-xs font-semibold ${textPrimary}/80`}>{label}</div>
             <div className="text-[10px] text-[#5A6E8E] mt-0.5 truncate" title={sub}>{sub}</div>
           </div>
@@ -208,7 +208,7 @@ export const StudentDashboard: React.FC = () => {
       {/* Active sessions */}
       <div>
         <div className="flex items-center justify-between mb-3">
-          <h2 className={`font-bold ${textPrimary} text-base`} style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Active Feedback Sessions</h2>
+          <h2 className={`font-bold ${textPrimary} text-sm sm:text-base`} style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Active Feedback Sessions</h2>
           <button
             onClick={() => navigate("/student/history")}
             className="text-xs text-[#3B82F6] font-semibold hover:underline flex items-center gap-1 bg-transparent border-0 cursor-pointer"
@@ -216,16 +216,16 @@ export const StudentDashboard: React.FC = () => {
             View history <ArrowRight size={12} />
           </button>
         </div>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4">
           {subjectsList.length === 0 ? (
-            <div className={`lg:col-span-2 rounded-2xl p-8 border text-center text-xs font-semibold text-gray-500 dark:text-gray-400 ${cardBg}`}>
+            <div className={`lg:col-span-2 rounded-2xl p-6 sm:p-8 border text-center text-xs font-semibold text-gray-500 dark:text-gray-400 ${cardBg}`}>
               No active feedback sessions available.
             </div>
           ) : (
             subjectsList.map((s: any) => (
               <div
                 key={s.mappingId}
-                className={`rounded-2xl p-5 border transition-all shadow-sm ${
+                className={`rounded-2xl p-4 sm:p-5 border transition-all shadow-sm w-full ${
                   s.submitted
                     ? dark
                       ? "bg-white/4 border-white/8 opacity-80"
@@ -237,26 +237,26 @@ export const StudentDashboard: React.FC = () => {
               >
                 <div className="flex items-start justify-between gap-2 mb-3">
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
+                    <div className="flex items-center gap-2 mb-1 flex-wrap">
                       <Badge variant={s.submitted ? "success" : "warning"}>
                         <StatusDot status={s.submitted ? "active" : "scheduled"} />
                         {s.submitted ? "Submitted" : "Pending"}
                       </Badge>
                       <span className="text-[10px] text-[#5A6E8E] font-mono">{s.code}</span>
                     </div>
-                    <h3 className={`font-semibold ${textPrimary} text-sm truncate`}>{s.subject}</h3>
-                    <p className={`text-xs ${textSub} mt-0.5`}>Faculty: {s.faculty}</p>
+                    <h3 className={`font-semibold ${textPrimary} text-xs sm:text-sm truncate`}>{s.subject}</h3>
+                    <p className={`text-[11px] sm:text-xs ${textSub} mt-0.5 truncate`}>Faculty: {s.faculty}</p>
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-2 text-[10px] text-[#5A6E8E] mb-4 bg-gray-50 dark:bg-white/5 p-2.5 rounded-xl border border-gray-100 dark:border-white/5">
-                  <div><span className="font-semibold text-gray-700 dark:text-gray-300">Course:</span> {s.course}</div>
-                  <div><span className="font-semibold text-gray-700 dark:text-gray-300">Branch:</span> {s.branch}</div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 sm:gap-2 text-[10px] sm:text-[11px] text-[#5A6E8E] mb-3.5 sm:mb-4 bg-gray-50 dark:bg-white/5 p-2 sm:p-2.5 rounded-xl border border-gray-100 dark:border-white/5">
+                  <div className="truncate"><span className="font-semibold text-gray-700 dark:text-gray-300">Course:</span> {s.course}</div>
+                  <div className="truncate"><span className="font-semibold text-gray-700 dark:text-gray-300">Branch:</span> {s.branch}</div>
                   <div><span className="font-semibold text-gray-700 dark:text-gray-300">Semester:</span> Semester {s.semester}</div>
                   <div className="flex items-center gap-1"><Clock size={10} /> <span className="font-semibold text-gray-700 dark:text-gray-300">Deadline:</span> {s.deadline}</div>
                 </div>
                 {s.submitted ? (
                   <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-100 dark:border-emerald-500/20 text-emerald-700 dark:text-emerald-400 text-xs font-semibold">
-                    <CheckCircle2 size={13} /> Feedback submitted — identity never stored
+                    <CheckCircle2 size={13} className="shrink-0" /> <span className="truncate">Feedback submitted — identity never stored</span>
                   </div>
                 ) : (
                   <button
@@ -274,25 +274,25 @@ export const StudentDashboard: React.FC = () => {
 
       {/* Confidential banner */}
       <div
-        className={`rounded-2xl p-5 border ${dark ? "border-white/10" : "border-[#0B3D91]/8"}`}
+        className={`rounded-2xl p-4 sm:p-5 border ${dark ? "border-white/10" : "border-[#0B3D91]/8"} w-full`}
         style={{
           background: dark
             ? "linear-gradient(135deg, rgba(11,61,145,0.15), rgba(59,130,246,0.05))"
             : "linear-gradient(135deg, #EEF2F8, #E8EEF8)"
         }}
       >
-        <div className="flex items-center gap-3 mb-3">
-          <div className="w-10 h-10 rounded-xl bg-[#0B3D91] flex items-center justify-center shrink-0">
+        <div className="flex items-center gap-2.5 sm:gap-3 mb-3">
+          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-[#0B3D91] flex items-center justify-center shrink-0">
             <ShieldCheck size={18} className="text-white" />
           </div>
           <div>
-            <h3 className={`font-bold ${textPrimary} text-sm`} style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+            <h3 className={`font-bold ${textPrimary} text-xs sm:text-sm`} style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
               How your anonymity is protected
             </h3>
-            <p className="text-xs text-[#5A6E8E]">Technical privacy guarantees</p>
+            <p className="text-[10px] sm:text-xs text-[#5A6E8E]">Technical privacy guarantees</p>
           </div>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5 sm:gap-3">
           {[
             { icon: Lock, title: "Login ≠ Identity", desc: "Your credentials verify eligibility only. The submission record contains no user ID." },
             { icon: Sparkles, title: "Anonymized Storage", desc: "Feedback is stored without any link to your enrollment number, roll number, or name." },
@@ -300,7 +300,7 @@ export const StudentDashboard: React.FC = () => {
           ].map(({ icon: Icon, title, desc }) => (
             <div
               key={title}
-              className={`flex gap-3 p-3 rounded-xl border ${
+              className={`flex gap-2.5 sm:gap-3 p-3 rounded-xl border ${
                 dark ? "bg-white/5 border-white/10" : "bg-white border-[#0B3D91]/8"
               }`}
             >

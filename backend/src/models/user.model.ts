@@ -45,6 +45,22 @@ const UserSchema: Schema = new Schema(
   },
   {
     timestamps: true,
+    toJSON: {
+      transform(_doc, ret: Record<string, any>) {
+        delete ret.password;
+        delete ret.refreshTokens;
+        delete ret.__v;
+        return ret;
+      },
+    },
+    toObject: {
+      transform(_doc, ret: Record<string, any>) {
+        delete ret.password;
+        delete ret.refreshTokens;
+        delete ret.__v;
+        return ret;
+      },
+    },
   }
 );
 

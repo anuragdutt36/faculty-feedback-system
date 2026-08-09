@@ -3,33 +3,43 @@ import jwt from "jsonwebtoken";
 import { AuthenticatedRequest } from "../types/index.js";
 import { ApiResponse } from "../utils/apiResponse.js";
 import { UserRole } from "../models/user.model.js";
-
-const ACCESS_TOKEN_SECRET = process.env.ACCESS_TOKEN_SECRET || "knit_access_secret_123_xyz";
+import { env } from "../config/env.js";
 
 export const authenticate = (
   req: AuthenticatedRequest,
   res: Response,
   next: NextFunction
 ) => {
-  const authHeader = req.headers.authorization || req.headers.Authorization as string;
+  const authHeader = req.headers.authorization || (req.headers.Authorization as string);
 
-  if (!authHeader?.startsWith("Bearer ")) {
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
     return res
       .status(401)
       .json(ApiResponse.error("Unauthorized: Access token missing or invalid"));
   }
 
   const token = authHeader.split(" ")[1];
+  if (!token) {
+    return res
+      .status(401)
+      .json(ApiResponse.error("Unauthorized: Access token missing"));
+  }
 
   try {
-    const decoded = jwt.verify(token, ACCESS_TOKEN_SECRET) as any;
+    const decoded = jwt.verify(token, env.ACCESS_TOKEN_SECRET) as any;
+    if (!decoded || !decoded.id || !decoded.role) {
+      return res
+        .status(401)
+        .json(ApiResponse.error("Unauthorized: Invalid token payload"));
+    }
+
     req.user = {
       id: decoded.id,
       username: decoded.username,
       role: decoded.role as UserRole,
     };
     next();
-  } catch (error) {
+  } catch (error: any) {
     return res
       .status(401)
       .json(ApiResponse.error("Unauthorized: Access token expired or invalid"));

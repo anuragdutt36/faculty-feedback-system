@@ -192,10 +192,7 @@ npm run seed
 > ⚠️ This clears all existing data except the admin user.
 
 **Default admin credentials after seeding:**
-```
-Username: admin@knit.ac.in
-Password: Admin@KNIT2026!
-```
+Configured via `DEFAULT_ADMIN_EMAIL` and `DEFAULT_ADMIN_PASSWORD` in your `.env` file (see `.env.example`).
 
 ### 5. Run the Application
 

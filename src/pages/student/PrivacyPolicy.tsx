@@ -41,21 +41,21 @@ export const PrivacyPolicy: React.FC = () => {
   const sectionHeaderBg = dark ? "bg-white/4" : "bg-[#F8FAFD]";
 
   return (
-    <div className="space-y-6 max-w-3xl">
+    <div className="space-y-4 sm:space-y-6 max-w-3xl w-full max-w-full overflow-x-hidden">
       {/* Header */}
       <div>
-        <h1 className={`text-2xl font-bold ${textPrimary}`} style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Privacy Policy</h1>
-        <p className={`text-sm ${textSub} mt-0.5`}>How your feedback and personal information are protected</p>
+        <h1 className={`text-xl sm:text-2xl font-bold ${textPrimary}`} style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Privacy Policy</h1>
+        <p className={`text-xs sm:text-sm ${textSub} mt-0.5`}>How your feedback and personal information are protected</p>
         <p className="text-[10px] text-[#5A6E8E] mt-1">Last updated: July 29, 2025 &nbsp;·&nbsp; Effective: Even Semester 2025</p>
       </div>
 
       {/* Hero Shield Card */}
-      <div className="rounded-2xl p-6 border border-violet-200 overflow-hidden relative" style={{ background: "linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%)" }}>
+      <div className="rounded-2xl p-4 sm:p-6 border border-violet-200 overflow-hidden relative" style={{ background: "linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%)" }}>
         <div className="absolute -right-6 -top-6 w-32 h-32 rounded-full bg-violet-200/40" />
         <div className="absolute -right-2 bottom-4 w-20 h-20 rounded-full bg-violet-300/20" />
-        <div className="relative z-10 flex items-start gap-5">
-          <div className="w-16 h-16 rounded-2xl bg-violet-600 flex items-center justify-center shrink-0 shadow-lg shadow-violet-500/30">
-            <ShieldCheck size={30} className="text-white" strokeWidth={1.5} />
+        <div className="relative z-10 flex items-start gap-3.5 sm:gap-5">
+          <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-xl sm:rounded-2xl bg-violet-600 flex items-center justify-center shrink-0 shadow-lg shadow-violet-500/30">
+            <ShieldCheck size={24} className="text-white sm:w-[30px] sm:h-[30px]" strokeWidth={1.5} />
           </div>
           <div>
             <h2 className="text-xl font-bold text-violet-900 mb-2" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Your Feedback Is Anonymous</h2>

@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { RollMappingController } from "../controllers/rollMapping.controller.js";
 import { authenticate, authorize } from "../middleware/auth.js";
+import { validateObjectId } from "../middleware/validateObjectId.js";
 
 const router = Router();
 
@@ -9,7 +10,7 @@ router.use(authenticate, authorize("admin"));
 
 router.get("/", RollMappingController.getMappings);
 router.post("/", RollMappingController.createMapping);
-router.put("/:id", RollMappingController.updateMapping);
-router.delete("/:id", RollMappingController.deleteMapping);
+router.put("/:id", validateObjectId("id"), RollMappingController.updateMapping);
+router.delete("/:id", validateObjectId("id"), RollMappingController.deleteMapping);
 
 export default router;

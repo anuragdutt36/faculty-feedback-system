@@ -114,7 +114,7 @@ export const AdminDashboard: React.FC = () => {
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6 w-full max-w-full overflow-x-hidden">
       {/* Title Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
@@ -130,7 +130,7 @@ export const AdminDashboard: React.FC = () => {
         <div className="flex items-center gap-2">
           <button 
             onClick={loadDashboardData}
-            className={`flex-1 sm:flex-none justify-center flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs sm:text-sm font-semibold border transition-all hover:scale-105 cursor-pointer ${
+            className={`flex-1 sm:flex-none justify-center flex items-center gap-1.5 sm:gap-2 px-3 sm:px-3.5 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-semibold border transition-all hover:scale-105 cursor-pointer ${
               dark ? "border-white/10 bg-white/5 text-white" : "border-[#0B3D91]/10 bg-white text-[#0D1B3E]"
             }`}
           >
@@ -138,7 +138,7 @@ export const AdminDashboard: React.FC = () => {
           </button>
           <button
             onClick={() => navigate("/admin/sessions")}
-            className="flex-1 sm:flex-none justify-center flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs sm:text-sm font-semibold bg-[#0B3D91] text-white hover:bg-[#0a348a] transition-all shadow-md shadow-[#0B3D91]/25 cursor-pointer border-0"
+            className="flex-1 sm:flex-none justify-center flex items-center gap-1.5 sm:gap-2 px-3 sm:px-3.5 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-semibold bg-[#0B3D91] text-white hover:bg-[#0a348a] transition-all shadow-md shadow-[#0B3D91]/25 cursor-pointer border-0"
           >
             <Plus size={14} /> New Session
           </button>
@@ -152,58 +152,58 @@ export const AdminDashboard: React.FC = () => {
         </div>
       ) : (
         <>
-          {/* Metric Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">
+          {/* Metric Cards (2-column on mobile, 6-column on xl desktop) */}
+          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-2.5 sm:gap-4">
             {cards.map(({ label, value, sub, icon: Icon, color }) => (
               <div
                 key={label}
-                className={`rounded-2xl p-5 border transition-all hover:shadow-lg hover:-translate-y-0.5 cursor-default shadow-sm ${
+                className={`rounded-2xl p-4 sm:p-5 border transition-all hover:shadow-lg hover:-translate-y-0.5 cursor-default shadow-sm ${
                   dark ? "bg-white/5 border-white/10" : "bg-white border-[#0B3D91]/10"
                 }`}
               >
-                <div className="flex items-start justify-between mb-4">
-                  <div className={`w-11 h-11 rounded-xl flex items-center justify-center ${color}`}>
-                    <Icon size={20} className="text-white" />
+                <div className="flex items-start justify-between mb-3 sm:mb-4">
+                  <div className={`w-10 h-10 sm:w-11 sm:h-11 rounded-xl flex items-center justify-center ${color}`}>
+                    <Icon size={18} className="text-white sm:w-5 sm:h-5" />
                   </div>
                 </div>
-                <div className={`text-3xl font-bold mb-1 ${textPrimary}`} style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>{value}</div>
-                <div className={`text-sm font-semibold mb-0.5 ${dark ? "text-white/80" : "text-[#0D1B3E]/80"}`}>{label}</div>
-                <div className={`text-xs ${textSub}`}>{sub}</div>
+                <div className={`text-2xl sm:text-3xl font-bold mb-0.5 sm:mb-1 ${textPrimary}`} style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>{value}</div>
+                <div className={`text-xs sm:text-sm font-semibold mb-0.5 ${dark ? "text-white/80" : "text-[#0D1B3E]/80"}`}>{label}</div>
+                <div className={`text-[10px] sm:text-xs ${textSub}`}>{sub}</div>
               </div>
             ))}
           </div>
 
           {/* Secondary stats row */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className={`flex items-center justify-between p-5 rounded-2xl border ${cardBg}`}>
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-xl bg-emerald-500 flex items-center justify-center text-white"><Activity size={22} /></div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
+            <div className={`flex items-center justify-between p-4 sm:p-5 rounded-2xl border ${cardBg}`}>
+              <div className="flex items-center gap-3 sm:gap-4">
+                <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-emerald-500 flex items-center justify-center text-white shrink-0"><Activity size={20} className="sm:w-[22px] sm:h-[22px]" /></div>
                 <div>
-                  <h4 className={`text-2xl font-bold ${textPrimary}`}>{metrics.activeSessions}</h4>
-                  <p className={`text-xs ${textSub}`}>Active Feedback Evaluation Sessions</p>
+                  <h4 className={`text-xl sm:text-2xl font-bold ${textPrimary}`}>{metrics.activeSessions}</h4>
+                  <p className={`text-[11px] sm:text-xs ${textSub}`}>Active Feedback Evaluation Sessions</p>
                 </div>
               </div>
             </div>
-            <div className={`flex items-center justify-between p-5 rounded-2xl border ${cardBg}`}>
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-xl bg-amber-500 flex items-center justify-center text-white"><CheckCircle2 size={22} /></div>
+            <div className={`flex items-center justify-between p-4 sm:p-5 rounded-2xl border ${cardBg}`}>
+              <div className="flex items-center gap-3 sm:gap-4">
+                <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-amber-500 flex items-center justify-center text-white shrink-0"><CheckCircle2 size={20} className="sm:w-[22px] sm:h-[22px]" /></div>
                 <div>
-                  <h4 className={`text-2xl font-bold ${textPrimary}`}>{metrics.completionRate}</h4>
-                  <p className={`text-xs ${textSub}`}>Overall Student Response Completion Rate</p>
+                  <h4 className={`text-xl sm:text-2xl font-bold ${textPrimary}`}>{metrics.completionRate}</h4>
+                  <p className={`text-[11px] sm:text-xs ${textSub}`}>Overall Student Response Completion Rate</p>
                 </div>
               </div>
             </div>
           </div>
 
           {/* Charts */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-            <div className={`lg:col-span-2 rounded-2xl border p-5 shadow-sm ${cardBg}`}>
-              <div className="flex items-center justify-between mb-5">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4">
+            <div className={`lg:col-span-2 rounded-2xl border p-4 sm:p-5 shadow-sm min-w-0 ${cardBg}`}>
+              <div className="flex items-center justify-between mb-4 sm:mb-5 gap-2">
                 <div>
-                  <h3 className={`font-semibold text-sm ${textPrimary}`} style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Feedback Trend</h3>
-                  <p className={`text-xs mt-0.5 ${textSub}`}>Submissions & avg rating over semesters</p>
+                  <h3 className={`font-semibold text-xs sm:text-sm ${textPrimary}`} style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Feedback Trend</h3>
+                  <p className={`text-[10px] sm:text-xs mt-0.5 ${textSub}`}>Submissions & avg rating over semesters</p>
                 </div>
-                <Badge variant="success">Live Database Synced</Badge>
+                <Badge variant="success">Live Synced</Badge>
               </div>
               {trendData.length === 0 || !trendData.some(t => t.submissions > 0) ? (
                 <div className="flex flex-col items-center justify-center h-[220px] text-center text-xs text-gray-400 font-medium">
@@ -211,23 +211,25 @@ export const AdminDashboard: React.FC = () => {
                   No feedback submission trends recorded yet in the database.
                 </div>
               ) : (
-                <ResponsiveContainer width="100%" height={220}>
-                  <AreaChart id="dash-trend" data={trendData} margin={{ top: 5, right: 5, left: -10, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke={dark ? "rgba(255,255,255,0.06)" : "rgba(11,61,145,0.06)"} />
-                    <XAxis dataKey="sem" tick={{ fontSize: 11, fill: dark ? "#8AAAD4" : "#5A6E8E" }} axisLine={false} tickLine={false} />
-                    <YAxis tick={{ fontSize: 11, fill: dark ? "#8AAAD4" : "#5A6E8E" }} axisLine={false} tickLine={false} />
-                    <Tooltip contentStyle={{ background: dark ? "#132052" : "#fff", border: "1px solid rgba(11,61,145,0.1)", borderRadius: 12, fontSize: 12 }} labelStyle={{ color: dark ? "#fff" : "#0D1B3E", fontWeight: 600 }} />
-                    <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 11 }} />
-                    <Area type="monotone" dataKey="submissions" name="Submissions" stroke="#3B82F6" fill="#3B82F6" fillOpacity={0.15} strokeWidth={2} dot={{ r: 3, fill: "#3B82F6" }} />
-                    <Area type="monotone" dataKey="ratingScaled" name="Avg Rating (×100)" stroke="#0B3D91" fill="#0B3D91" fillOpacity={0.1} strokeWidth={2} dot={{ r: 3, fill: "#0B3D91" }} />
-                  </AreaChart>
-                </ResponsiveContainer>
+                <div className="w-full h-[220px] min-w-0">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart id="dash-trend" data={trendData} margin={{ top: 5, right: 5, left: -10, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke={dark ? "rgba(255,255,255,0.06)" : "rgba(11,61,145,0.06)"} />
+                      <XAxis dataKey="sem" tick={{ fontSize: 11, fill: dark ? "#8AAAD4" : "#5A6E8E" }} axisLine={false} tickLine={false} />
+                      <YAxis tick={{ fontSize: 11, fill: dark ? "#8AAAD4" : "#5A6E8E" }} axisLine={false} tickLine={false} />
+                      <Tooltip contentStyle={{ background: dark ? "#132052" : "#fff", border: "1px solid rgba(11,61,145,0.1)", borderRadius: 12, fontSize: 12 }} labelStyle={{ color: dark ? "#fff" : "#0D1B3E", fontWeight: 600 }} />
+                      <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 11 }} />
+                      <Area type="monotone" dataKey="submissions" name="Submissions" stroke="#3B82F6" fill="#3B82F6" fillOpacity={0.15} strokeWidth={2} dot={{ r: 3, fill: "#3B82F6" }} />
+                      <Area type="monotone" dataKey="ratingScaled" name="Avg Rating (×100)" stroke="#0B3D91" fill="#0B3D91" fillOpacity={0.1} strokeWidth={2} dot={{ r: 3, fill: "#0B3D91" }} />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
               )}
             </div>
-            <div className={`rounded-2xl border p-5 shadow-sm ${cardBg}`}>
-              <div className="mb-5">
-                <h3 className={`font-semibold text-sm ${textPrimary}`} style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Dept. Performance</h3>
-                <p className={`text-xs mt-0.5 ${textSub}`}>Avg rating by department</p>
+            <div className={`rounded-2xl border p-4 sm:p-5 shadow-sm min-w-0 ${cardBg}`}>
+              <div className="mb-4 sm:mb-5">
+                <h3 className={`font-semibold text-xs sm:text-sm ${textPrimary}`} style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Dept. Performance</h3>
+                <p className={`text-[10px] sm:text-xs mt-0.5 ${textSub}`}>Avg rating by department</p>
               </div>
               {deptData.length === 0 || !deptData.some(d => d.rating > 0) ? (
                 <div className="flex flex-col items-center justify-center h-[220px] text-center text-xs text-gray-400 font-medium">
@@ -235,15 +237,17 @@ export const AdminDashboard: React.FC = () => {
                   No department ratings recorded yet.
                 </div>
               ) : (
-                <ResponsiveContainer width="100%" height={220}>
-                  <BarChart id="dash-deptbar" data={deptData} layout="vertical" margin={{ top: 0, right: 16, left: -10, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke={dark ? "rgba(255,255,255,0.06)" : "rgba(11,61,145,0.06)"} horizontal={false} />
-                    <XAxis type="number" domain={[0, 5]} tick={{ fontSize: 10, fill: dark ? "#8AAAD4" : "#5A6E8E" }} axisLine={false} tickLine={false} />
-                    <YAxis type="category" dataKey="dept" tick={{ fontSize: 11, fill: dark ? "#8AAAD4" : "#5A6E8E" }} axisLine={false} tickLine={false} width={48} />
-                    <Tooltip contentStyle={{ background: dark ? "#132052" : "#fff", border: "1px solid rgba(11,61,145,0.1)", borderRadius: 12, fontSize: 12 }} />
-                    <Bar dataKey="rating" fill="#0B3D91" radius={[0, 6, 6, 0]} barSize={14} />
-                  </BarChart>
-                </ResponsiveContainer>
+                <div className="w-full h-[220px] min-w-0">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart id="dash-deptbar" data={deptData} layout="vertical" margin={{ top: 0, right: 16, left: -10, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke={dark ? "rgba(255,255,255,0.06)" : "rgba(11,61,145,0.06)"} horizontal={false} />
+                      <XAxis type="number" domain={[0, 5]} tick={{ fontSize: 10, fill: dark ? "#8AAAD4" : "#5A6E8E" }} axisLine={false} tickLine={false} />
+                      <YAxis type="category" dataKey="dept" tick={{ fontSize: 11, fill: dark ? "#8AAAD4" : "#5A6E8E" }} axisLine={false} tickLine={false} width={48} />
+                      <Tooltip contentStyle={{ background: dark ? "#132052" : "#fff", border: "1px solid rgba(11,61,145,0.1)", borderRadius: 12, fontSize: 12 }} />
+                      <Bar dataKey="rating" fill="#0B3D91" radius={[0, 6, 6, 0]} barSize={14} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
               )}
             </div>
           </div>

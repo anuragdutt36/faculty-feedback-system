@@ -9,7 +9,34 @@ import { RollMapping } from "../models/rollMapping.model.js";
 import { SystemSettings } from "../models/settings.model.js";
 import { logger } from "../utils/logger.js";
 
+import { env } from "../config/env.js";
+
 export class SeedService {
+  static async ensureAdminUser() {
+    const adminExists = await User.findOne({ role: "admin" });
+    if (!adminExists) {
+      const adminEmail = (env.DEFAULT_ADMIN_EMAIL || "admin@knit.ac.in").toLowerCase().trim();
+      let hash = env.DEFAULT_ADMIN_PASSWORD_HASH;
+
+      if (!hash && env.DEFAULT_ADMIN_PASSWORD) {
+        const salt = await bcrypt.genSalt(12);
+        hash = await bcrypt.hash(env.DEFAULT_ADMIN_PASSWORD, salt);
+      }
+
+      if (hash) {
+        await User.create({
+          username: adminEmail,
+          password: hash,
+          role: "admin",
+          status: "active",
+        });
+        logger.info(`[Seed] Initialized admin user: ${adminEmail}`);
+      } else {
+        logger.warn("[Seed] Warning: No DEFAULT_ADMIN_PASSWORD or DEFAULT_ADMIN_PASSWORD_HASH provided. Admin user was not created.");
+      }
+    }
+  }
+
   static async clearDatabase() {
     logger.info("Clearing database (keeping admin)...");
     
@@ -49,17 +76,7 @@ export class SeedService {
     await this.clearDatabase();
 
     // 1. Ensure admin user exists
-    const adminExists = await User.findOne({ role: "admin" });
-    if (!adminExists) {
-      const salt = await bcrypt.genSalt(12);
-      const hash = await bcrypt.hash("Admin@KNIT2026!", salt);
-      await User.create({
-        username: "admin@knit.ac.in",
-        password: hash,
-        role: "admin",
-        status: "active",
-      });
-    }
+    await this.ensureAdminUser();
 
     // 2. Create Courses
     const btech = await Course.create({ name: "Bachelor of Technology", duration: 4 });

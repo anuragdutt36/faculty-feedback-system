@@ -3,16 +3,15 @@ import { SettingsController } from "../controllers/settings.controller.js";
 import { authenticate, authorize } from "../middleware/auth.js";
 import multer from "multer";
 import path from "path";
-import fs from "fs";
-
 import { v2 as cloudinary } from "cloudinary";
 import { CloudinaryStorage } from "multer-storage-cloudinary";
+import { env } from "../config/env.js";
 
-// Configure cloudinary (credentials come from .env)
+// Configure cloudinary with environment credentials
 cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET
+  cloud_name: env.CLOUDINARY_CLOUD_NAME,
+  api_key: env.CLOUDINARY_API_KEY,
+  api_secret: env.CLOUDINARY_API_SECRET,
 });
 
 const storage = new CloudinaryStorage({
@@ -25,6 +24,7 @@ const storage = new CloudinaryStorage({
 
 const upload = multer({
   storage,
+  limits: { fileSize: 2 * 1024 * 1024 }, // 2MB max file size limit
   fileFilter: (req, file, cb) => {
     const allowed = [".png", ".jpg", ".jpeg", ".svg"];
     const ext = path.extname(file.originalname).toLowerCase();
@@ -33,7 +33,7 @@ const upload = multer({
     } else {
       cb(new Error("Only images (PNG, JPG, JPEG, SVG) are allowed"));
     }
-  }
+  },
 });
 
 const router = Router();

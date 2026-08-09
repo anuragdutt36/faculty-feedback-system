@@ -395,20 +395,20 @@ export const Reports: React.FC = () => {
       </div>
 
       {/* Dynamic Filters Configuration */}
-      <div className={cn("rounded-2xl border p-4 flex flex-wrap gap-4 items-end", cardBg)}>
-        <div>
+      <div className={cn("rounded-2xl border p-4 flex flex-wrap gap-3 sm:gap-4 items-end", cardBg)}>
+        <div className="w-full sm:w-auto">
           <label className={cn("block text-[10px] font-bold mb-1.5 uppercase tracking-wider", textSub)}>Academic Session</label>
           <AcademicSessionDropdown
-            className="w-32"
+            className="w-full sm:w-32"
             value={selectedYear}
             onChange={(val) => setSelectedYear(val)}
           />
         </div>
 
-        <div>
+        <div className="w-full sm:w-auto flex-1 min-w-[140px]">
           <label className={cn("block text-[10px] font-bold mb-1.5 uppercase tracking-wider", textSub)}>Course</label>
           <select
-            className={cn("px-3 py-2 rounded-xl border text-xs focus:outline-none cursor-pointer", inputCls)}
+            className={cn("w-full px-3 py-2 rounded-xl border text-xs focus:outline-none cursor-pointer", inputCls)}
             value={selectedCourse}
             onChange={(e) => setSelectedCourse(e.target.value)}
           >
@@ -416,10 +416,10 @@ export const Reports: React.FC = () => {
           </select>
         </div>
 
-        <div>
+        <div className="w-full sm:w-auto flex-1 min-w-[140px]">
           <label className={cn("block text-[10px] font-bold mb-1.5 uppercase tracking-wider", textSub)}>Branch / Dept</label>
           <select
-            className={cn("px-3 py-2 rounded-xl border text-xs focus:outline-none cursor-pointer", inputCls)}
+            className={cn("w-full px-3 py-2 rounded-xl border text-xs focus:outline-none cursor-pointer", inputCls)}
             value={selectedBranch}
             onChange={(e) => setSelectedBranch(e.target.value)}
           >
@@ -435,10 +435,10 @@ export const Reports: React.FC = () => {
           </select>
         </div>
 
-        <div>
+        <div className="w-full sm:w-auto">
           <label className={cn("block text-[10px] font-bold mb-1.5 uppercase tracking-wider", textSub)}>Semester</label>
           <select
-            className={cn("px-3 py-2 rounded-xl border text-xs focus:outline-none cursor-pointer", inputCls)}
+            className={cn("w-full sm:w-auto px-3 py-2 rounded-xl border text-xs focus:outline-none cursor-pointer", inputCls)}
             value={selectedSemester}
             onChange={(e) => setSelectedSemester(e.target.value)}
           >
@@ -451,10 +451,10 @@ export const Reports: React.FC = () => {
         </div>
 
         {reportType === "Individual Faculty Report" && (
-          <div>
+          <div className="w-full sm:w-auto flex-1 min-w-[200px]">
             <label className={cn("block text-[10px] font-bold mb-1.5 uppercase tracking-wider", textSub)}>Faculty Member</label>
             <select
-              className={cn("px-3 py-2 rounded-xl border text-xs focus:outline-none cursor-pointer min-w-[200px]", inputCls)}
+              className={cn("w-full px-3 py-2 rounded-xl border text-xs focus:outline-none cursor-pointer", inputCls)}
               value={selectedFaculty}
               onChange={(e) => setSelectedFaculty(e.target.value)}
               disabled={loadingFaculties || !selectedSession || availableFaculties.length === 0}
@@ -475,7 +475,7 @@ export const Reports: React.FC = () => {
           </div>
         )}
 
-        <div>
+        <div className="w-full sm:w-auto pt-1">
           <ModBtn icon={BarChart2} variant="primary" onClick={handleGenerateReport} disabled={loading}>
             {loading ? <Loader2 size={13} className="animate-spin" /> : "Generate Report"}
           </ModBtn>

@@ -6,31 +6,25 @@ import { useTheme } from "../../context/ThemeContext.js";
 
 export const DashboardLayout: React.FC = () => {
   const { dark } = useTheme();
-  const [sidebarOpen, setSidebarOpen] = useState(window.innerWidth > 768);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const bg = dark ? "bg-[#0D1B3E]" : "bg-[#EEF2F8]";
 
   return (
-    <div className={`min-h-screen flex ${bg}`} style={{ fontFamily: "'Inter', sans-serif" }}>
-      {/* Reusable Sidebar */}
+    <div className={`min-h-screen flex flex-col ${bg} transition-colors`} style={{ fontFamily: "'Inter', sans-serif" }}>
+      {/* Top Navigation Header (Desktop horizontal tabs & mobile fixed bar) */}
+      <Header onToggleMobileMenu={() => setMobileMenuOpen(!mobileMenuOpen)} />
+
+      {/* Mobile Slide-Over Drawer (Right-sided on mobile) */}
       <Sidebar
-        isOpen={sidebarOpen}
-        setIsOpen={setSidebarOpen}
         mobileOpen={mobileMenuOpen}
         onCloseMobile={() => setMobileMenuOpen(false)}
       />
 
-      {/* Main content wrapper */}
-      <div className="flex-1 flex flex-col min-w-0 w-full overflow-x-hidden">
-        {/* Reusable Header */}
-        <Header onToggleMobileMenu={() => setMobileMenuOpen(!mobileMenuOpen)} />
-
-        {/* Content Outlet */}
-        <main className="flex-1 overflow-y-auto p-4 sm:p-6 min-w-0">
-          <Outlet />
-        </main>
-      </div>
+      {/* Main Content Area */}
+      <main className="flex-1 w-full max-w-7xl mx-auto p-3.5 sm:p-6 lg:p-8 min-w-0 overflow-y-auto">
+        <Outlet />
+      </main>
     </div>
   );
 };

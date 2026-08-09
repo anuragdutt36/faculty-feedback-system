@@ -1,16 +1,12 @@
 import mongoose from "mongoose";
-import dotenv from "dotenv";
 import { SeedService } from "../services/seed.service.js";
 import { logger } from "../utils/logger.js";
-
-dotenv.config();
-
-const MONGO_URI = process.env.MONGO_URI || "mongodb://127.0.0.1:27017/knit-feedback";
+import { env } from "./env.js";
 
 const seedData = async () => {
   try {
     logger.info("Connecting to MongoDB for seeding...");
-    await mongoose.connect(MONGO_URI);
+    await mongoose.connect(env.MONGO_URI);
     logger.info("Connected. Seeding database...");
     
     await SeedService.seedDatabase();

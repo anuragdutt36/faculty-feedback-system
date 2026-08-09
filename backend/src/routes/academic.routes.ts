@@ -3,6 +3,7 @@ import { AcademicController } from "../controllers/academic.controller.js";
 import { courseValidator, branchValidator, subjectValidator } from "../validators/academic.validator.js";
 import { validateRequest } from "../middleware/validate.js";
 import { authenticate, authorize } from "../middleware/auth.js";
+import { validateObjectId } from "../middleware/validateObjectId.js";
 
 const router = Router();
 
@@ -20,12 +21,14 @@ router.put(
   "/courses/:id",
   authenticate,
   authorize("admin"),
+  validateObjectId("id"),
   AcademicController.updateCourse
 );
 router.delete(
   "/courses/:id",
   authenticate,
   authorize("admin"),
+  validateObjectId("id"),
   AcademicController.deleteCourse
 );
 
@@ -43,12 +46,14 @@ router.put(
   "/branches/:id",
   authenticate,
   authorize("admin"),
+  validateObjectId("id"),
   AcademicController.updateBranch
 );
 router.delete(
   "/branches/:id",
   authenticate,
   authorize("admin"),
+  validateObjectId("id"),
   AcademicController.deleteBranch
 );
 
@@ -66,12 +71,14 @@ router.put(
   "/subjects/:id",
   authenticate,
   authorize("admin"),
+  validateObjectId("id"),
   AcademicController.updateSubject
 );
 router.delete(
   "/subjects/:id",
   authenticate,
   authorize("admin"),
+  validateObjectId("id"),
   AcademicController.deleteSubject
 );
 
@@ -87,12 +94,14 @@ router.put(
   "/years/:id",
   authenticate,
   authorize("admin"),
+  validateObjectId("id"),
   AcademicController.updateYear
 );
 router.delete(
   "/years/:id",
   authenticate,
   authorize("admin"),
+  validateObjectId("id"),
   AcademicController.deleteYear
 );
 
@@ -108,12 +117,14 @@ router.put(
   "/semesters/:id",
   authenticate,
   authorize("admin"),
+  validateObjectId("id"),
   AcademicController.updateSemester
 );
 router.delete(
   "/semesters/:id",
   authenticate,
   authorize("admin"),
+  validateObjectId("id"),
   AcademicController.deleteSemester
 );
 

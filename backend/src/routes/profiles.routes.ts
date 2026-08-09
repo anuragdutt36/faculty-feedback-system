@@ -1,6 +1,7 @@
 import express, { Router } from "express";
 import { ProfilesController } from "../controllers/profiles.controller.js";
 import { authenticate, authorize } from "../middleware/auth.js";
+import { validateObjectId } from "../middleware/validateObjectId.js";
 
 const router = Router();
 
@@ -16,12 +17,14 @@ router.put(
   "/faculty/:id",
   authenticate,
   authorize("admin"),
+  validateObjectId("id"),
   ProfilesController.updateFaculty
 );
 router.delete(
   "/faculty/:id",
   authenticate,
   authorize("admin"),
+  validateObjectId("id"),
   ProfilesController.deleteFaculty
 );
 router.post(
@@ -33,9 +36,9 @@ router.post(
       "text/csv",
       "text/plain",
       "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      "application/octet-stream"
+      "application/octet-stream",
     ],
-    limit: "10mb"
+    limit: "5mb",
   }),
   ProfilesController.importFaculty
 );
@@ -57,9 +60,9 @@ router.post(
       "text/csv",
       "text/plain",
       "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      "application/octet-stream"
+      "application/octet-stream",
     ],
-    limit: "10mb"
+    limit: "5mb",
   }),
   ProfilesController.importStudents
 );
@@ -67,12 +70,14 @@ router.put(
   "/students/:id",
   authenticate,
   authorize("admin"),
+  validateObjectId("id"),
   ProfilesController.updateStudent
 );
 router.delete(
   "/students/:id",
   authenticate,
   authorize("admin"),
+  validateObjectId("id"),
   ProfilesController.deleteStudent
 );
 

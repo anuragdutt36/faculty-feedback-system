@@ -1,4 +1,4 @@
-# Node.js
+# Node.js dependencies
 node_modules/
 npm-debug.log*
 yarn-debug.log*
@@ -9,17 +9,22 @@ pnpm-debug.log*
 dist/
 build/
 .output/
+backend/dist/
 
-# Environment variables
+# Environment variables & secrets (CRITICAL - NEVER COMMIT)
 .env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
+.env.*
+*.env
+*.env.*
+**/.env
+**/.env.*
+backend/.env
+backend/.env.*
 
 # Logs
 logs/
 *.log
+backend/logs/
 
 # Coverage
 coverage/
@@ -34,7 +39,7 @@ coverage/
 ehthumbs.db
 Thumbs.db
 
-# IDE files
+# IDE & Editor files
 .vscode/
 .idea/
 *.swp
@@ -48,7 +53,7 @@ Thumbs.db
 backend/uploads/*
 !backend/uploads/.gitkeep
 
-# Temporary/test files
+# Temporary / Scratch files
 *.test.js
 *.spec.js
 test-*.js

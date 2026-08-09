@@ -1,17 +1,10 @@
 import mongoose from "mongoose";
-import dotenv from "dotenv";
-import path from "path";
-
-// Load environment variables
-dotenv.config();
-dotenv.config({ path: path.resolve(__dirname, "../../.env") });
-dotenv.config({ path: path.resolve(__dirname, "../../../.env") });
-
+import { env } from "../config/env.js";
 import { Course, Branch, Subject } from "../models/academic.model.js";
 import { FacultyProfile } from "../models/profiles.model.js";
 import { FacultySubjectMapping } from "../models/mapping.model.js";
 
-const MONGO_URI = process.env.MONGO_URI || "mongodb://127.0.0.1:27017/knit-feedback";
+const MONGO_URI = env.MONGO_URI;
 
 interface MCAItem {
   sem: number;

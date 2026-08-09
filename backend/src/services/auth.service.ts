@@ -5,11 +5,10 @@ import { StudentProfile } from "../models/profiles.model.js";
 import { SystemSettings } from "../models/settings.model.js";
 import { RollMapping } from "../models/rollMapping.model.js";
 import { CustomError } from "../middleware/errorHandler.js";
+import { env } from "../config/env.js";
 
-const ACCESS_TOKEN_SECRET = process.env.ACCESS_TOKEN_SECRET || "knit_access_secret_123_xyz";
-const REFRESH_TOKEN_SECRET = process.env.REFRESH_TOKEN_SECRET || "knit_refresh_secret_456_abc";
-const ACCESS_TOKEN_EXPIRY = "15m";
-const REFRESH_TOKEN_EXPIRY = "7d";
+// Dummy hash used for constant-time comparison when user is not found (mitigates timing attacks)
+const DUMMY_HASH = "$2b$12$abcdefghijklmnopqrstuuABCDEFGHIJKLMNOPQRSTUUabcdefghij";
 
 export class AuthService {
   static async generateTokens(user: IUser) {
@@ -22,12 +21,12 @@ export class AuthService {
     const dbSettings = await SystemSettings.findOne();
     const timeout = dbSettings ? dbSettings.sessionTimeout : 30;
 
-    const accessToken = jwt.sign(payload, ACCESS_TOKEN_SECRET, {
-      expiresIn: `${timeout}m`,
+    const accessToken = jwt.sign(payload, env.ACCESS_TOKEN_SECRET, {
+      expiresIn: `${timeout}m` as any,
     });
 
-    const refreshToken = jwt.sign(payload, REFRESH_TOKEN_SECRET, {
-      expiresIn: REFRESH_TOKEN_EXPIRY,
+    const refreshToken = jwt.sign(payload, env.REFRESH_TOKEN_SECRET, {
+      expiresIn: env.REFRESH_TOKEN_EXPIRY as any,
     });
 
     return { accessToken, refreshToken };
@@ -35,10 +34,12 @@ export class AuthService {
 
   // Admin login using username + password
   static async login(usernameInput: string, passwordInput: string) {
-    const username = usernameInput.toLowerCase().trim();
+    const username = (usernameInput || "").toLowerCase().trim();
     const user = await User.findOne({ username });
 
     if (!user || user.role !== "admin") {
+      // Run dummy comparison to prevent user enumeration via timing attack
+      await bcrypt.compare(passwordInput, DUMMY_HASH).catch(() => {});
       throw new CustomError("Invalid credentials or unauthorized login role", 401);
     }
 
@@ -83,23 +84,39 @@ export class AuthService {
     let email = "";
     let googleId = "";
 
+    // Development-only mock sandbox login
     if (idToken.startsWith("dev_mock_token_")) {
+      if (env.isProduction) {
+        throw new CustomError("Mock login sandbox is disabled in production", 403);
+      }
       email = idToken.replace("dev_mock_token_", "").toLowerCase().trim();
       googleId = "mock_google_id_" + email.split("@")[0];
     } else {
+      // Server-side verification with Google
       try {
-        const response = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${idToken}`);
+        const response = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(idToken)}`);
         if (!response.ok) {
-          throw new Error();
+          throw new Error("Invalid token response from Google");
         }
-        const data = await response.json() as any;
+        const data = (await response.json()) as any;
+
+        // Verify token audience if client ID is configured
+        if (env.GOOGLE_CLIENT_ID && data.aud !== env.GOOGLE_CLIENT_ID) {
+          throw new Error("Google token client ID mismatch");
+        }
+
+        // Verify email is verified by Google
+        if (data.email_verified !== "true" && data.email_verified !== true) {
+          throw new Error("Google email is not verified");
+        }
+
         email = data.email?.toLowerCase().trim();
         googleId = data.sub;
 
         if (!email) {
-          throw new Error();
+          throw new Error("No email found in token");
         }
-      } catch (err) {
+      } catch (err: any) {
         throw new CustomError("Failed to verify Google Sign-In token. Please try again.", 401);
       }
     }
@@ -115,7 +132,7 @@ export class AuthService {
 
     // Domain Restriction
     if (domainRestriction && !email.endsWith(domainRestriction)) {
-      throw new CustomError("Only official institution email accounts are allowed.", 403);
+      throw new CustomError(`Only official institution accounts ending with ${domainRestriction} are allowed.`, 403);
     }
 
     // Find or create student user
@@ -132,7 +149,7 @@ export class AuthService {
       throw new CustomError("Your account has been deactivated. Please contact administration.", 403);
     }
 
-    // Check if student profile exists in database
+    // Dynamic academic model loading
     const { Course, Branch } = await import("../models/academic.model.js");
 
     // Universal email parsing: name.rollnumber@college-domain
@@ -161,7 +178,7 @@ export class AuthService {
     }
 
     let studentProfile = await StudentProfile.findOne({ email });
-    
+
     if (!studentProfile) {
       // First login - auto-create profile
       let courseId;
@@ -239,7 +256,7 @@ export class AuthService {
 
   static async refresh(token: string) {
     try {
-      const decoded = jwt.verify(token, REFRESH_TOKEN_SECRET) as any;
+      const decoded = jwt.verify(token, env.REFRESH_TOKEN_SECRET) as any;
       const user = await User.findById(decoded.id);
 
       if (!user || !user.refreshTokens.includes(token) || user.status !== "active") {
@@ -280,7 +297,6 @@ export class AuthService {
       }
 
       if (studentProfile) {
-        // Universal email parsing & dynamic roll mapping update on getMe
         const localPart = user.username.split("@")[0] || "";
         const parts = localPart.split(".");
         let rawName = parts[0] || localPart;

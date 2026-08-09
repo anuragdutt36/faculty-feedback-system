@@ -41,9 +41,9 @@ export const FeedbackHistory: React.FC = () => {
   }
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4 sm:space-y-5 w-full max-w-full overflow-x-hidden">
       <div>
-        <h2 className={`font-bold ${textPrimary} text-lg mb-1`} style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Feedback History</h2>
+        <h2 className={`font-bold ${textPrimary} text-base sm:text-lg mb-1`} style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Feedback History</h2>
         <p className={`text-xs ${textSub}`}>Only submission status is displayed. Your individual responses are permanently anonymized and cannot be retrieved.</p>
       </div>
 

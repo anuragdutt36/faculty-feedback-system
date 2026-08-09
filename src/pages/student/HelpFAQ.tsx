@@ -78,11 +78,11 @@ export const HelpFAQ: React.FC = () => {
   const sectionHeaderBg = dark ? "bg-white/4" : "bg-[#F8FAFD]";
 
   return (
-    <div className="space-y-6 max-w-3xl">
+    <div className="space-y-4 sm:space-y-6 max-w-3xl w-full max-w-full overflow-x-hidden">
       {/* Header */}
       <div>
-        <h1 className={`text-2xl font-bold ${textPrimary}`} style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Help & FAQ</h1>
-        <p className={`text-sm ${textSub} mt-0.5`}>Find answers to common questions about the Faculty Feedback System</p>
+        <h1 className={`text-xl sm:text-2xl font-bold ${textPrimary}`} style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Help & FAQ</h1>
+        <p className={`text-xs sm:text-sm ${textSub} mt-0.5`}>Find answers to common questions about the Faculty Feedback System</p>
       </div>
 
       {/* Search */}

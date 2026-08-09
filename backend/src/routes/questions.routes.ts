@@ -3,6 +3,7 @@ import { QuestionsController } from "../controllers/questions.controller.js";
 import { questionValidator } from "../validators/academic.validator.js";
 import { validateRequest } from "../middleware/validate.js";
 import { authenticate, authorize } from "../middleware/auth.js";
+import { validateObjectId } from "../middleware/validateObjectId.js";
 
 const router = Router();
 
@@ -19,12 +20,14 @@ router.put(
   "/:id",
   authenticate,
   authorize("admin"),
+  validateObjectId("id"),
   QuestionsController.updateQuestion
 );
 router.delete(
   "/:id",
   authenticate,
   authorize("admin"),
+  validateObjectId("id"),
   QuestionsController.deleteQuestion
 );
 

@@ -238,15 +238,15 @@ export const Settings: React.FC = () => {
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 sm:gap-6 w-full max-w-full overflow-x-hidden">
         {/* Tab sidebar */}
-        <div className={cn("rounded-2xl border p-3 h-fit", cardBg)}>
+        <div className={cn("rounded-2xl border p-1.5 sm:p-3 flex lg:flex-col overflow-x-auto gap-1 sm:gap-0.5 shrink-0 h-fit", cardBg)}>
           {tabs.map(({ key, label, icon: Icon }) => (
             <button
               key={key}
               onClick={() => setTab(key)}
               className={cn(
-                "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all mb-0.5 border-0 cursor-pointer",
+                "flex items-center gap-2 sm:gap-3 px-3 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all border-0 cursor-pointer whitespace-nowrap shrink-0 lg:w-full",
                 tab === key
                   ? "bg-[#0B3D91] text-white"
                   : dark
@@ -261,7 +261,7 @@ export const Settings: React.FC = () => {
         </div>
 
         {/* Content */}
-        <div className={cn("lg:col-span-3 rounded-2xl border p-6", cardBg)}>
+        <div className={cn("lg:col-span-3 rounded-2xl border p-4 sm:p-6 min-w-0", cardBg)}>
           {tab === "general" && (
             <div className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

@@ -150,22 +150,22 @@ export const Notifications: React.FC = () => {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6 w-full max-w-full overflow-x-hidden">
       {/* Header */}
       <div>
-        <h1 className={`text-2xl font-bold ${textPrimary}`} style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Notifications</h1>
-        <p className={`text-sm ${textSub} mt-0.5`}>Important updates related to feedback sessions and academic announcements</p>
+        <h1 className={`text-xl sm:text-2xl font-bold ${textPrimary}`} style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Notifications</h1>
+        <p className={`text-xs sm:text-sm ${textSub} mt-0.5`}>Important updates related to feedback sessions and academic announcements</p>
       </div>
 
       {/* Search + Mark all read */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 sm:gap-3">
         <div className="relative flex-1 max-w-full sm:max-w-sm">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#5A6E8E]" />
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search notifications…"
-            className={`w-full pl-9 pr-4 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-2 focus:ring-[#3B82F6]/30 transition-all ${
+            className={`w-full pl-9 pr-4 py-2.5 rounded-xl border text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-[#3B82F6]/30 transition-all ${
               dark
                 ? "bg-white/8 border-white/10 text-white placeholder:text-white/30"
                 : "bg-white border-[#0B3D91]/10 text-[#0D1B3E] placeholder:text-[#5A6E8E]/60"
@@ -175,7 +175,7 @@ export const Notifications: React.FC = () => {
         {unreadCount > 0 && (
           <button
             onClick={markAllRead}
-            className={`flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl border text-xs font-semibold transition-all cursor-pointer ${
+            className={`flex items-center justify-center gap-1.5 px-3.5 sm:px-4 py-2.5 rounded-xl border text-xs font-semibold transition-all cursor-pointer ${
               dark
                 ? "bg-white/5 border-white/10 text-white hover:bg-white/10"
                 : "bg-white border-[#0B3D91]/10 text-[#0B3D91] hover:bg-[#EEF2F8]"
@@ -187,12 +187,12 @@ export const Notifications: React.FC = () => {
       </div>
 
       {/* Filter tabs */}
-      <div className="flex items-center gap-2 flex-wrap">
+      <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
         {filterTabs.map(({ key, label }) => (
           <button
             key={key}
             onClick={() => setFilter(key)}
-            className={`px-4 py-2 rounded-xl text-xs font-semibold border transition-all cursor-pointer ${
+            className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl text-xs font-semibold border transition-all cursor-pointer ${
               filter === key
                 ? "bg-[#0B3D91] text-white border-[#0B3D91] shadow-md shadow-[#0B3D91]/20"
                 : dark
@@ -207,21 +207,21 @@ export const Notifications: React.FC = () => {
 
       {/* List */}
       {filtered.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-20 text-center">
-          <div className="w-20 h-20 rounded-full bg-[#EEF2F8] dark:bg-white/5 flex items-center justify-center mb-4">
-            <Inbox size={32} className="text-[#5A6E8E]" strokeWidth={1.5} />
+        <div className="flex flex-col items-center justify-center py-16 sm:py-20 text-center">
+          <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-[#EEF2F8] dark:bg-white/5 flex items-center justify-center mb-3 sm:mb-4">
+            <Inbox size={28} className="text-[#5A6E8E]" strokeWidth={1.5} />
           </div>
-          <h3 className={`font-semibold ${textPrimary} mb-1`} style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>No notifications.</h3>
-          <p className={`text-sm ${textSub}`}>{search ? "Try a different search term." : "You have no notifications yet."}</p>
+          <h3 className={`font-semibold ${textPrimary} text-sm sm:text-base mb-1`} style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>No notifications.</h3>
+          <p className={`text-xs sm:text-sm ${textSub}`}>{search ? "Try a different search term." : "You have no notifications yet."}</p>
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-2.5 sm:space-y-3">
           {filtered.map((n) => {
             const Icon = resolveIcon(n);
             return (
               <div
                 key={n._id}
-                className={`group flex items-start gap-4 p-4 rounded-2xl border transition-all cursor-pointer ${
+                className={`group flex items-start gap-3 sm:gap-4 p-3.5 sm:p-4 rounded-2xl border transition-all cursor-pointer ${
                   n.isRead
                     ? dark
                       ? "bg-white/4 border-white/8 hover:shadow-sm"
@@ -232,35 +232,35 @@ export const Notifications: React.FC = () => {
                 }`}
                 onClick={() => markRead(n._id)}
               >
-                <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
+                <div className={`w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center shrink-0 ${
                   n.category === "feedback" ? "bg-blue-100 text-blue-600" :
                   n.category === "academic" ? "bg-violet-100 text-violet-600" : "bg-slate-100 text-slate-500"
                 }`}>
-                  <Icon size={18} />
+                  <Icon size={16} className="sm:w-[18px] sm:h-[18px]" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-start justify-between gap-2 mb-1">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className={`font-semibold text-sm ${
+                    <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+                      <span className={`font-semibold text-xs sm:text-sm ${
                         n.isRead ? textPrimary : dark ? "text-blue-300" : "text-[#0B3D91]"
                       }`}>
                         {n.title}
                       </span>
-                      {!n.isRead && <span className="w-2 h-2 rounded-full bg-[#0B3D91] shrink-0" />}
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold border ${categoryColors[n.category]}`}>
+                      {!n.isRead && <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-[#0B3D91] shrink-0" />}
+                      <span className={`inline-flex items-center px-1.5 sm:px-2 py-0.5 rounded-full text-[9px] sm:text-[10px] font-semibold border ${categoryColors[n.category]}`}>
                         {categoryLabels[n.category]}
                       </span>
                     </div>
                     <span className="text-[10px] text-[#5A6E8E] shrink-0">{formatTime(n.createdAt)}</span>
                   </div>
-                  <p className={`text-xs ${textSub} leading-relaxed`}>{n.message}</p>
+                  <p className={`text-[11px] sm:text-xs ${textSub} leading-relaxed`}>{n.message}</p>
                 </div>
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
                     deleteNotif(n._id);
                   }}
-                  className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg text-[#5A6E8E] hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-all shrink-0 cursor-pointer"
+                  className="opacity-70 sm:opacity-0 group-hover:opacity-100 p-1.5 rounded-lg text-[#5A6E8E] hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-all shrink-0 cursor-pointer"
                 >
                   <Trash2 size={13} />
                 </button>

@@ -34,12 +34,9 @@ export const LoginPage: React.FC = () => {
   const handleGoogleCredential = async (idToken: string) => {
     setLoadingState(true);
     setErrorMsg("");
-    console.log("[DEBUG] Token received, initiating googleLogin...");
     try {
       await googleLogin(idToken);
-      console.log("[DEBUG] googleLogin completed successfully.");
     } catch (err: any) {
-      console.error("[DEBUG] googleLogin error:", err);
       setErrorMsg(err.message || "Google Sign-In failed. Only official institution emails registered in records are allowed.");
       setLoadingState(false);
     }
@@ -56,11 +53,11 @@ export const LoginPage: React.FC = () => {
     if (role === "student" && googleLoginEnabled) {
       const initGoogle = () => {
         const win = window as any;
-        if (win.google && win.google.accounts) {
+        const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || "";
+        if (win.google && win.google.accounts && clientId) {
           win.google.accounts.id.initialize({
-            client_id: "695413120178-m1g87ivdavmsm5m8tjs7391ga30evhf1.apps.googleusercontent.com",
+            client_id: clientId,
             callback: (response: any) => {
-              console.log("[DEBUG] Google One Tap callback success:", !!response.credential);
               if (response.credential) {
                 handleGoogleCredential(response.credential);
               }
@@ -108,7 +105,7 @@ export const LoginPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen flex" style={{ fontFamily: "'Inter', sans-serif" }}>
+    <div className="min-h-screen flex w-full overflow-x-hidden" style={{ fontFamily: "'Inter', sans-serif" }}>
       {/* Left pane - branding */}
       <div className="hidden lg:flex flex-col w-[52%] relative overflow-hidden" style={{ background: "linear-gradient(145deg, #041030 0%, #0B3D91 60%, #1e6dd8 100%)" }}>
         <svg className="absolute inset-0 w-full h-full opacity-5">
@@ -174,24 +171,24 @@ export const LoginPage: React.FC = () => {
       </div>
 
       {/* Right pane - form */}
-      <div className="flex-1 flex flex-col items-center justify-center p-4 sm:p-8 bg-[#EEF2F8] min-h-screen lg:min-h-0">
+      <div className="flex-1 flex flex-col items-center justify-center p-3.5 sm:p-8 bg-[#EEF2F8] min-h-screen lg:min-h-0 w-full">
         <div className="w-full max-w-md relative">
-          <div className="flex lg:hidden items-center justify-center gap-3 mb-6 sm:mb-8 text-center">
-            <LogoMark size={36} dark={false} />
+          <div className="flex lg:hidden items-center justify-center gap-2.5 sm:gap-3 mb-5 sm:mb-8 text-center">
+            <LogoMark size={32} dark={false} className="w-8 h-8 shrink-0" />
             <div>
               <div className="text-[#0D1B3E] font-bold text-xs sm:text-sm leading-tight" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>{systemName} Faculty Feedback System</div>
-              <div className="text-[#5A6E8E] text-[11px]">{instituteName}</div>
+              <div className="text-[#5A6E8E] text-[10px] sm:text-[11px]">{instituteName}</div>
             </div>
           </div>
           
-          <div className="bg-white rounded-3xl shadow-xl shadow-[#0B3D91]/8 border border-[#0B3D91]/8 p-5 sm:p-8">
-            <div className="mb-6">
-              <h1 className="text-xl sm:text-2xl font-bold text-[#0D1B3E] mb-1" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Welcome back</h1>
+          <div className="bg-white rounded-2xl sm:rounded-3xl shadow-xl shadow-[#0B3D91]/8 border border-[#0B3D91]/8 p-4 sm:p-8">
+            <div className="mb-4 sm:mb-6">
+              <h1 className="text-lg sm:text-2xl font-bold text-[#0D1B3E] mb-1" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Welcome back</h1>
               <p className="text-[#5A6E8E] text-xs sm:text-sm">Sign in to your account to continue</p>
             </div>
             
             {/* Role selector tabs */}
-            <div className="grid grid-cols-2 rounded-xl bg-[#EEF2F8] p-1 mb-6 text-center text-xs">
+            <div className="grid grid-cols-2 rounded-xl bg-[#EEF2F8] p-1 mb-5 sm:mb-6 text-center text-xs">
               {(["student", "admin"] as Role[]).map((r) => (
                 <button
                   key={r}
@@ -200,7 +197,7 @@ export const LoginPage: React.FC = () => {
                     setRole(r);
                     setErrorMsg("");
                   }}
-                  className={`py-2.5 rounded-lg font-semibold transition-all capitalize cursor-pointer border-0 ${
+                  className={`py-2 sm:py-2.5 rounded-lg font-semibold transition-all capitalize cursor-pointer border-0 ${
                     role === r ? "bg-white text-[#0B3D91] shadow-sm font-bold" : "text-[#5A6E8E] hover:text-[#0D1B3E] bg-transparent"
                   }`}
                 >
@@ -235,15 +232,17 @@ export const LoginPage: React.FC = () => {
                   </div>
                 )}
 
-                <div className="text-center pt-2">
-                  <button
-                    type="button"
-                    onClick={() => setShowSandbox(true)}
-                    className="text-[11px] text-[#3B82F6] hover:underline font-semibold cursor-pointer border-0 bg-transparent"
-                  >
-                    Having trouble? Open Local Testing Sandbox
-                  </button>
-                </div>
+                {import.meta.env.DEV && (
+                  <div className="text-center pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowSandbox(true)}
+                      className="text-[11px] text-[#3B82F6] hover:underline font-semibold cursor-pointer border-0 bg-transparent"
+                    >
+                      Having trouble? Open Local Testing Sandbox
+                    </button>
+                  </div>
+                )}
               </div>
             ) : (
               <form onSubmit={handleAdminLogin} className="space-y-4">
@@ -257,7 +256,7 @@ export const LoginPage: React.FC = () => {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="admin@institute.ac.in"
-                    className="w-full px-4 py-3 rounded-xl bg-[#F0F4FA] border border-[#0B3D91]/10 text-[#0D1B3E] text-sm placeholder:text-[#5A6E8E]/60 focus:outline-none focus:ring-2 focus:ring-[#3B82F6]/30 focus:border-[#3B82F6] transition-all"
+                    className="w-full px-3.5 sm:px-4 py-2.5 sm:py-3 rounded-xl bg-[#F0F4FA] border border-[#0B3D91]/10 text-[#0D1B3E] text-xs sm:text-sm placeholder:text-[#5A6E8E]/60 focus:outline-none focus:ring-2 focus:ring-[#3B82F6]/30 focus:border-[#3B82F6] transition-all"
                   />
                 </div>
                 
@@ -270,7 +269,7 @@ export const LoginPage: React.FC = () => {
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       placeholder="••••••••••••"
-                      className="w-full px-4 py-3 pr-12 rounded-xl bg-[#F0F4FA] border border-[#0B3D91]/10 text-[#0D1B3E] text-sm placeholder:text-[#5A6E8E]/60 focus:outline-none focus:ring-2 focus:ring-[#3B82F6]/30 focus:border-[#3B82F6] transition-all"
+                      className="w-full px-3.5 sm:px-4 py-2.5 sm:py-3 pr-12 rounded-xl bg-[#F0F4FA] border border-[#0B3D91]/10 text-[#0D1B3E] text-xs sm:text-sm placeholder:text-[#5A6E8E]/60 focus:outline-none focus:ring-2 focus:ring-[#3B82F6]/30 focus:border-[#3B82F6] transition-all"
                     />
                     <button
                       type="button"
@@ -300,7 +299,7 @@ export const LoginPage: React.FC = () => {
                 <button
                   type="submit"
                   disabled={loadingState}
-                  className="w-full py-3.5 rounded-xl bg-[#0B3D91] text-white font-semibold text-sm hover:bg-[#0a348a] active:scale-[0.98] transition-all shadow-lg shadow-[#0B3D91]/25 disabled:opacity-70 flex items-center justify-center gap-2 cursor-pointer"
+                  className="w-full py-2.5 sm:py-3.5 rounded-xl bg-[#0B3D91] text-white font-semibold text-xs sm:text-sm hover:bg-[#0a348a] active:scale-[0.98] transition-all shadow-lg shadow-[#0B3D91]/25 disabled:opacity-70 flex items-center justify-center gap-2 cursor-pointer"
                 >
                   {loadingState ? (
                     <>
@@ -317,24 +316,24 @@ export const LoginPage: React.FC = () => {
               </form>
             )}
 
-            <div className="mt-5 flex items-center justify-center gap-2 text-[#5A6E8E] text-xs">
-              <ShieldCheck size={12} className="text-emerald-500" />
+            <div className="mt-5 flex items-center justify-center gap-2 text-[#5A6E8E] text-[11px] sm:text-xs text-center">
+              <ShieldCheck size={12} className="text-emerald-500 shrink-0" />
               <span>256-bit encrypted &nbsp;·&nbsp; {systemName} Secure Portal</span>
             </div>
           </div>
           
           <button
             onClick={() => navigate("/")}
-            className="mt-5 flex items-center gap-1.5 text-[#5A6E8E] hover:text-[#0B3D91] text-sm transition-colors mx-auto bg-transparent border-0 cursor-pointer"
+            className="mt-5 flex items-center gap-1.5 text-[#5A6E8E] hover:text-[#0B3D91] text-xs sm:text-sm transition-colors mx-auto bg-transparent border-0 cursor-pointer"
           >
             <ChevronLeft size={14} /> Back to Home
           </button>
 
-          {/* Sandbox Local Testing Modal popup overlay */}
-          {showSandbox && (
+          {/* Sandbox Local Testing Modal popup overlay (dev only) */}
+          {showSandbox && import.meta.env.DEV && (
             <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
-              <div className="bg-white rounded-3xl p-6 max-w-sm w-full border border-gray-200 shadow-2xl relative">
-                <h3 className="text-lg font-bold text-[#0D1B3E] mb-2" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Google Sign-In Sandbox</h3>
+              <div className="bg-white rounded-3xl p-5 sm:p-6 max-w-sm w-full border border-gray-200 shadow-2xl relative">
+                <h3 className="text-base sm:text-lg font-bold text-[#0D1B3E] mb-2" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Google Sign-In Sandbox</h3>
                 <p className="text-xs text-[#5A6E8E] mb-4 leading-relaxed">
                   To test the Google Sign-in flow locally, type your student email. The system verifies domain restrictions and record eligibility.
                 </p>
@@ -347,7 +346,7 @@ export const LoginPage: React.FC = () => {
                       value={mockGoogleEmail}
                       onChange={(e) => setMockGoogleEmail(e.target.value)}
                       placeholder="e.g. 2025mca001@institute.ac.in"
-                      className="w-full px-4 py-2.5 rounded-xl bg-[#F0F4FA] border border-[#0B3D91]/10 text-sm focus:outline-none focus:ring-2 focus:ring-[#3B82F6]/30 text-[#0D1B3E]"
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-[#F0F4FA] border border-[#0B3D91]/10 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-[#3B82F6]/30 text-[#0D1B3E]"
                     />
                   </div>
                   <div className="flex gap-2">
