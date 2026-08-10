@@ -40,6 +40,7 @@ const router = Router();
 
 // Settings
 router.get("/", SettingsController.getSettings);
+router.get("/public-stats", SettingsController.getPublicStats);
 router.put("/", authenticate, authorize("admin"), SettingsController.updateSettings);
 router.post("/logo", authenticate, authorize("admin"), upload.single("logo"), SettingsController.uploadLogo);
 router.delete("/logo", authenticate, authorize("admin"), SettingsController.deleteLogo);

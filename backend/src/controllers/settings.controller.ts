@@ -7,12 +7,39 @@ import { AuthenticatedRequest } from "../types/index.js";
 import { logAudit } from "../utils/auditLogger.js";
 import fs from "fs";
 import path from "path";
+import { User } from "../models/user.model.js";
+import { Branch } from "../models/academic.model.js";
+import { FacultyProfile, StudentProfile } from "../models/profiles.model.js";
 
 export class SettingsController {
   static async getSettings(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
       const settings = await SettingsService.getSettings();
       return res.status(200).json(ApiResponse.success("Settings retrieved", settings));
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async getPublicStats(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+    try {
+      // Query both Profiles and Users collections
+      const [studentProfiles, studentUsers, facultyProfiles, facultyUsers, departments] = await Promise.all([
+        StudentProfile.countDocuments({ status: "active" }),
+        User.countDocuments({ role: "student", status: "active" }),
+        FacultyProfile.countDocuments({ status: "active" }),
+        User.countDocuments({ role: { $in: ["faculty", "hod"] }, status: "active" }),
+        Branch.countDocuments({ status: "active" }),
+      ]);
+
+      const students = Math.max(studentProfiles, studentUsers);
+      const faculty = Math.max(facultyProfiles, facultyUsers);
+
+      return res.status(200).json(ApiResponse.success("Public stats retrieved", {
+        students,
+        faculty,
+        departments
+      }));
     } catch (error) {
       next(error);
     }

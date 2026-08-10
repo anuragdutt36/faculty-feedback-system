@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 import { Eye, EyeOff, Shield, Lock, CheckCircle2, RefreshCw, ChevronLeft, ArrowRight, ShieldCheck } from "lucide-react";
+import { motion } from "framer-motion";
 import { useAuth } from "../../context/AuthContext.js";
 import { useSettings } from "../../context/SettingsContext.js";
 import { LogoMark } from "../../components/common/LogoMark.js";
@@ -124,9 +125,17 @@ export const LoginPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen flex w-full overflow-x-hidden" style={{ fontFamily: "'Inter', sans-serif" }}>
+    <div className="flex flex-col min-h-screen bg-[#EEF2F8] overflow-x-hidden font-sans">
+      
+      <div className="flex flex-col lg:flex-row flex-1 w-full">
       {/* Left pane - branding */}
-      <div className="hidden lg:flex flex-col w-[52%] relative overflow-hidden" style={{ background: "linear-gradient(145deg, #041030 0%, #0B3D91 60%, #1e6dd8 100%)" }}>
+      <motion.div 
+        initial={{ opacity: 0, x: -30 }} 
+        animate={{ opacity: 1, x: 0 }} 
+        transition={{ duration: 0.8, ease: "easeOut" }}
+        className="hidden lg:flex lg:flex-col lg:w-1/2 bg-cover bg-center text-white p-12 justify-between relative shadow-2xl z-10" 
+        style={{ background: "linear-gradient(135deg, #041030 0%, #0B3D91 50%, #1a5dc8 100%)" }}
+      >
         <svg className="absolute inset-0 w-full h-full opacity-5">
           <defs>
             <pattern id="lgrid" width="40" height="40" patternUnits="userSpaceOnUse">
@@ -135,7 +144,7 @@ export const LoginPage: React.FC = () => {
           </defs>
           <rect width="100%" height="100%" fill="url(#lgrid)" />
         </svg>
-        <div className="relative z-10 flex flex-col h-full p-12">
+        <div className="relative z-10 flex flex-col h-full">
             <div className="flex items-center gap-3">
               <LogoMark size={48} dark />
               <div>
@@ -187,10 +196,15 @@ export const LoginPage: React.FC = () => {
           </div>
           <div className="text-blue-300 text-xs text-center">Uttar Pradesh, India &nbsp;·&nbsp; Established 1963 &nbsp;·&nbsp; NAAC Accredited</div>
         </div>
-      </div>
+      </motion.div>
 
       {/* Right pane - form */}
-      <div className="flex-1 flex flex-col items-center justify-center p-3.5 sm:p-8 bg-[#EEF2F8] min-h-screen lg:min-h-0 w-full">
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }} 
+        animate={{ opacity: 1, y: 0 }} 
+        transition={{ duration: 0.6, ease: "easeOut", delay: 0.1 }}
+        className="flex-1 flex flex-col items-center justify-center p-3.5 sm:p-8 bg-[#EEF2F8] min-h-screen lg:min-h-0 w-full"
+      >
         <div className="w-full max-w-md relative">
           <div className="flex lg:hidden items-center justify-center gap-2.5 sm:gap-3 mb-5 sm:mb-8 text-center">
             <LogoMark size={32} dark={false} className="w-8 h-8 shrink-0" />
@@ -388,6 +402,7 @@ export const LoginPage: React.FC = () => {
             </div>
           )}
         </div>
+      </motion.div>
       </div>
     </div>
   );

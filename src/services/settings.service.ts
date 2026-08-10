@@ -4,6 +4,9 @@ export const settingsService = {
   getSettings: async () => {
     return await apiFetch("/settings");
   },
+  getPublicStats: async () => {
+    return await apiFetch("/settings/public-stats");
+  },
 
   updateSettings: async (settings: any) => {
     return await apiFetch("/settings", {

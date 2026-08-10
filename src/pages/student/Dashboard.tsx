@@ -4,6 +4,7 @@ import {
   GraduationCap, Activity, ClipboardList, CheckCircle2, Calendar, ArrowRight,
   Building2, Clock, MessageSquare, Lock, Sparkles, BarChart2, ShieldCheck, Loader2
 } from "lucide-react";
+import { motion } from "framer-motion";
 import { useAuth } from "../../context/AuthContext.js";
 import { useTheme } from "../../context/ThemeContext.js";
 import { Badge } from "../../components/common/Badge.js";
@@ -116,10 +117,28 @@ export const StudentDashboard: React.FC = () => {
     );
   }
 
+  const staggerContainer = {
+    hidden: { opacity: 0 },
+    show: {
+      opacity: 1,
+      transition: { staggerChildren: 0.1, delayChildren: 0.1 }
+    }
+  };
+  const fadeUp = {
+    hidden: { opacity: 0, y: 20 },
+    show: { opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" } }
+  };
+
   return (
-    <div className="space-y-4 sm:space-y-6 w-full max-w-full overflow-x-hidden">
+    <motion.div 
+      variants={staggerContainer}
+      initial="hidden"
+      animate="show"
+      className="space-y-4 sm:space-y-6 w-full max-w-full overflow-x-hidden"
+    >
       {/* Welcome */}
-      <div
+      <motion.div
+        variants={fadeUp}
         className={`rounded-2xl p-4 sm:p-6 border shadow-sm ${
           dark ? "border-white/10 bg-white/5" : "border-[#0B3D91]/8 bg-white"
         }`}
@@ -178,13 +197,15 @@ export const StudentDashboard: React.FC = () => {
             <span>{progress}% complete</span>
           </div>
         </div>
-      </div>
+      </motion.div>
 
       {/* Privacy Banner */}
-      <PrivacyBanner />
+      <motion.div variants={fadeUp}>
+        <PrivacyBanner />
+      </motion.div>
 
       {/* Metric cards (2-column on mobile, 4-column on desktop) */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
+      <motion.div variants={fadeUp} className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
         {[
           { label: "Active Sessions", value: String(activeSessions.length), sub: "Active Feedback Campaigns", icon: Activity, color: "bg-[#0B3D91]" },
           { label: "Pending Feedback", value: String(pending), sub: `${pending} subjects remaining`, icon: ClipboardList, color: "bg-amber-500" },
@@ -203,7 +224,7 @@ export const StudentDashboard: React.FC = () => {
             <div className="text-[10px] text-[#5A6E8E] mt-0.5 truncate" title={sub}>{sub}</div>
           </div>
         ))}
-      </div>
+      </motion.div>
 
       {/* Active sessions */}
       <div>
@@ -313,7 +334,7 @@ export const StudentDashboard: React.FC = () => {
           ))}
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 };
 

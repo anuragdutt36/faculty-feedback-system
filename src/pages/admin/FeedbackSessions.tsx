@@ -286,7 +286,12 @@ export const FeedbackSessions: React.FC = () => {
                   value={form.year}
                   onChange={(e) => setForm({ ...form, year: Number(e.target.value) })}
                 >
-                  {[1, 2, 3, 4].map(y => <option key={y} value={y}>{y}nd Year (Year {y})</option>)}
+                  {[
+                    { val: 1, label: "1st Year" },
+                    { val: 2, label: "2nd Year" },
+                    { val: 3, label: "3rd Year" },
+                    { val: 4, label: "4th Year" }
+                  ].map(y => <option key={y.val} value={y.val}>{y.label}</option>)}
                 </select>
               </div>
               <div>

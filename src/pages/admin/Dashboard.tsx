@@ -10,6 +10,7 @@ import {
   AreaChart, Area, BarChart, Bar,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend
 } from "recharts";
+import { motion } from "framer-motion";
 import { useAuth } from "../../context/AuthContext.js";
 import { useTheme } from "../../context/ThemeContext.js";
 import { useSettings } from "../../context/SettingsContext.js";
@@ -113,10 +114,27 @@ export const AdminDashboard: React.FC = () => {
     { label: "Total Semesters", value: metrics.totalSemesters, sub: "Active evaluation sems", icon: BookOpen, color: "bg-pink-500" }
   ];
 
+  const staggerContainer = {
+    hidden: { opacity: 0 },
+    show: {
+      opacity: 1,
+      transition: { staggerChildren: 0.1, delayChildren: 0.1 }
+    }
+  };
+  const fadeUp = {
+    hidden: { opacity: 0, y: 20 },
+    show: { opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" } }
+  };
+
   return (
-    <div className="space-y-4 sm:space-y-6 w-full max-w-full overflow-x-hidden">
+    <motion.div 
+      variants={staggerContainer}
+      initial="hidden"
+      animate="show"
+      className="space-y-4 sm:space-y-6 w-full max-w-full overflow-x-hidden"
+    >
       {/* Title Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <motion.div variants={fadeUp} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h1 className={`text-xl sm:text-2xl font-bold ${textPrimary}`} style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
             Welcome, {user?.name || "Admin"} 👋
@@ -143,7 +161,7 @@ export const AdminDashboard: React.FC = () => {
             <Plus size={14} /> New Session
           </button>
         </div>
-      </div>
+      </motion.div>
 
       {loading ? (
         <div className="flex flex-col items-center justify-center py-32">
@@ -153,7 +171,7 @@ export const AdminDashboard: React.FC = () => {
       ) : (
         <>
           {/* Metric Cards (2-column on mobile, 6-column on xl desktop) */}
-          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-2.5 sm:gap-4">
+          <motion.div variants={fadeUp} className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-2.5 sm:gap-4">
             {cards.map(({ label, value, sub, icon: Icon, color }) => (
               <div
                 key={label}
@@ -171,10 +189,10 @@ export const AdminDashboard: React.FC = () => {
                 <div className={`text-[10px] sm:text-xs ${textSub}`}>{sub}</div>
               </div>
             ))}
-          </div>
+          </motion.div>
 
           {/* Secondary stats row */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
+          <motion.div variants={fadeUp} className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
             <div className={`flex items-center justify-between p-4 sm:p-5 rounded-2xl border ${cardBg}`}>
               <div className="flex items-center gap-3 sm:gap-4">
                 <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-emerald-500 flex items-center justify-center text-white shrink-0"><Activity size={20} className="sm:w-[22px] sm:h-[22px]" /></div>
@@ -193,10 +211,10 @@ export const AdminDashboard: React.FC = () => {
                 </div>
               </div>
             </div>
-          </div>
+          </motion.div>
 
           {/* Charts */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4">
+          <motion.div variants={fadeUp} className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4">
             <div className={`lg:col-span-2 rounded-2xl border p-4 sm:p-5 shadow-sm min-w-0 ${cardBg}`}>
               <div className="flex items-center justify-between mb-4 sm:mb-5 gap-2">
                 <div>
@@ -250,10 +268,10 @@ export const AdminDashboard: React.FC = () => {
                 </div>
               )}
             </div>
-          </div>
+          </motion.div>
 
-          {/* Bottom Row */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          {/* Bottom Grid */}
+          <motion.div variants={fadeUp} className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4">
             {/* Rating Distribution */}
             <div className={`rounded-2xl border p-5 shadow-sm ${cardBg}`}>
               <h3 className={`font-semibold text-sm mb-5 ${textPrimary}`} style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Rating Distribution</h3>
@@ -332,7 +350,7 @@ export const AdminDashboard: React.FC = () => {
                 </div>
               ))}
             </div>
-          </div>
+          </motion.div>
 
           {/* Audit Trail Snippet */}
           <div className={`rounded-2xl border p-5 shadow-sm ${cardBg} mt-4`}>
@@ -361,10 +379,10 @@ export const AdminDashboard: React.FC = () => {
         </>
       )}
 
-      <div className={`text-center text-[10px] pb-2 ${textSub}`}>
+      <motion.div variants={fadeUp} className={`text-center text-[10px] pb-2 ${textSub}`}>
         {systemName} v2.0.0 &nbsp;·&nbsp; {instituteName} &nbsp;·&nbsp; <span className="text-emerald-500">All systems operational</span>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 };
 

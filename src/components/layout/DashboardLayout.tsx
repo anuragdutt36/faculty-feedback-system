@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Outlet } from "react-router";
 import { Sidebar } from "./Sidebar.js";
 import { Header } from "./Header.js";
+import { Footer } from "./Footer.js";
 import { useTheme } from "../../context/ThemeContext.js";
 
 export const DashboardLayout: React.FC = () => {
@@ -25,6 +26,9 @@ export const DashboardLayout: React.FC = () => {
       <main className="flex-1 w-full max-w-7xl mx-auto p-3.5 sm:p-6 lg:p-8 min-w-0 overflow-y-auto">
         <Outlet />
       </main>
+
+      {/* Global Dashboard Footer */}
+      <Footer compact />
     </div>
   );
 };
