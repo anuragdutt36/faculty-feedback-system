@@ -10,11 +10,11 @@ const startServer = async () => {
   // Connect to Database
   await connectDB();
 
-  // Ensure default admin account exists idempotently
+  // Ensure default platform superadmin and faculty accounts exist idempotently
   try {
     await SeedService.ensureAdminUser();
   } catch (seedErr: any) {
-    logger.warn(`[Init] Admin initialization notice: ${seedErr.message}`);
+    logger.warn(`[Init] Initialization notice: ${seedErr.message}`);
   }
 
   const server = app.listen(env.PORT, () => {

@@ -23,6 +23,13 @@ router.put(
   validateObjectId("id"),
   ProfilesController.updateFaculty
 );
+router.post(
+  "/faculty/:id/reset-password",
+  authenticate,
+  authorize("admin"),
+  validateObjectId("id"),
+  ProfilesController.resetFacultyPassword
+);
 router.delete(
   "/faculty/:id",
   authenticate,

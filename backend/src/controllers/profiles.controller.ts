@@ -111,6 +111,38 @@ export class ProfilesController {
     }
   }
 
+  static async resetFacultyPassword(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+    try {
+      const { id } = req.params;
+      const { newPassword } = req.body;
+      const institutionId = req.user?.institutionId || req.institutionId;
+      const result = await ProfilesService.resetFacultyPassword(
+        id,
+        newPassword,
+        institutionId ? institutionId.toString() : undefined
+      );
+
+      await logAudit({
+        userId: req.user?.id,
+        action: "FACULTY_PASSWORD_RESET",
+        details: `Reset password for faculty: ${result.name} (${result.email})`,
+        ipAddress: req.ip,
+        institutionId: institutionId ? (institutionId as any) : undefined,
+      });
+
+      return res.status(200).json(
+        ApiResponse.success("Password reset successfully", {
+          email: result.email,
+          name: result.name,
+          role: result.role,
+          newPassword: result.newPassword,
+        })
+      );
+    } catch (error) {
+      next(error);
+    }
+  }
+
   static async deleteFaculty(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
       const { id } = req.params;

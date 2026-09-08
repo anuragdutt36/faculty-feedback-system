@@ -119,7 +119,7 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
           { path: `${basePath}/trends`, label: "Feedback Trends", icon: TrendingUp },
           { path: `${basePath}/reports`, label: "Reports", icon: BarChart3 },
           { path: `${basePath}/notifications`, label: "Notifications", icon: Bell },
-          { path: `${basePath}/profile`, label: "Profile", icon: User },
+          { path: `${basePath}/profile`, label: "Profile & Settings", icon: Settings },
           { path: `${basePath}/help`, label: "Help & FAQ", icon: HelpCircle },
         ];
       case "faculty":
@@ -127,7 +127,7 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
           { path: "/faculty", label: "Dashboard", icon: LayoutDashboard, exact: true },
           { path: "/faculty/my-feedback", label: "My Feedback", icon: ClipboardList },
           { path: "/faculty/reports", label: "Reports", icon: BarChart3 },
-          { path: "/faculty/profile", label: "Profile", icon: User },
+          { path: "/faculty/profile", label: "Profile & Settings", icon: Settings },
           { path: "/faculty/notifications", label: "Notifications", icon: Bell },
           { path: "/faculty/help", label: "Help & FAQ", icon: HelpCircle },
         ];
@@ -256,6 +256,17 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
                       className="w-full px-4 py-2 text-xs font-medium flex items-center gap-2.5 hover:bg-gray-50 dark:hover:bg-white/10 transition-colors text-left cursor-pointer"
                     >
                       <Settings size={14} className="text-[#5A6E8E]" /> Settings
+                    </button>
+                  )}
+                  {(user.role === "faculty" || user.role === "hod" || user.role === "dean") && (
+                    <button
+                      onClick={() => {
+                        setUserDropdownOpen(false);
+                        navigate(`/${user.role}/profile`);
+                      }}
+                      className="w-full px-4 py-2 text-xs font-medium flex items-center gap-2.5 hover:bg-gray-50 dark:hover:bg-white/10 transition-colors text-left cursor-pointer"
+                    >
+                      <Settings size={14} className="text-[#5A6E8E]" /> Profile & Settings
                     </button>
                   )}
                   {user.role === "student" && (

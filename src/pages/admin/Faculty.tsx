@@ -1,6 +1,10 @@
 import React, { useState, useEffect } from "react";
-import { Plus, Download, Upload, Star, Users, UserCheck, Building2, Trash2, Edit, X, Loader2, BookOpen, AlertTriangle } from "lucide-react";
+import {
+  Plus, Download, Upload, Star, Users, UserCheck, Building2, Trash2, Edit, X, Loader2, BookOpen, AlertTriangle,
+  KeyRound, Copy, Check, Eye, EyeOff, CheckCircle2, Lock
+} from "lucide-react";
 import { useTheme } from "../../context/ThemeContext.js";
+import { useTenant } from "../../context/TenantContext.js";
 import {
   ModHeader, ModBtn, ModSearchBar, ModTable, ModTd, cn
 } from "../../components/admin/AdminShared.js";
@@ -31,6 +35,7 @@ interface FacultyMember {
 
 export const Faculty: React.FC = () => {
   const { dark } = useTheme();
+  const { portalSlug } = useTenant();
 
   // Search & Filter States
   const [search, setSearch] = useState("");
@@ -53,6 +58,7 @@ export const Faculty: React.FC = () => {
   // Modal States
   const [modalOpen, setModalOpen] = useState(false);
   const [editItem, setEditItem] = useState<FacultyMember | null>(null);
+  const [showFormPassword, setShowFormPassword] = useState(false);
   const [form, setForm] = useState({
     employeeId: "",
     name: "",
@@ -64,7 +70,15 @@ export const Faculty: React.FC = () => {
     academicScope: "Computer Science Department",
     branchId: "",
     status: "active" as "active" | "inactive",
+    password: "Faculty@123",
   });
+
+  // Password Reset Modal States
+  const [resetModalFaculty, setResetModalFaculty] = useState<FacultyMember | null>(null);
+  const [customResetPassword, setCustomResetPassword] = useState("Faculty@123");
+  const [showResetPass, setShowResetPass] = useState(false);
+  const [resetSuccessData, setResetSuccessData] = useState<{ email: string; name: string; password: string; role: string } | null>(null);
+  const [copied, setCopied] = useState(false);
 
   // Deletion State
   const [deleteConfirm, setDeleteConfirm] = useState<FacultyMember | null>(null);
@@ -116,6 +130,7 @@ export const Faculty: React.FC = () => {
   // Auto-generate employeeId for new profiles
   const openAddModal = () => {
     setEditItem(null);
+    setShowFormPassword(false);
     const nextNum = faculty.length + 1;
     const generatedId = `FAC-${String(nextNum).padStart(3, "0")}`;
     setForm({
@@ -129,12 +144,14 @@ export const Faculty: React.FC = () => {
       academicScope: "Computer Science Department",
       branchId: branches[0]?._id || "",
       status: "active",
+      password: "Faculty@123",
     });
     setModalOpen(true);
   };
 
   const openEditModal = (item: FacultyMember) => {
     setEditItem(item);
+    setShowFormPassword(false);
     setForm({
       employeeId: item.employeeId,
       name: item.name,
@@ -146,8 +163,37 @@ export const Faculty: React.FC = () => {
       academicScope: item.academicScope || "Department Scope",
       branchId: item.branchId?._id || "",
       status: item.status,
+      password: "",
     });
     setModalOpen(true);
+  };
+
+  const openResetPasswordModal = (item: FacultyMember) => {
+    setResetModalFaculty(item);
+    setCustomResetPassword("Faculty@123");
+    setShowResetPass(false);
+  };
+
+  const handleQuickResetPassword = async (targetFaculty: FacultyMember, passToSet?: string) => {
+    setSubmitting(true);
+    try {
+      const finalPass = passToSet && passToSet.trim().length > 0 ? passToSet.trim() : "Faculty@123";
+      const res = await facultyService.resetPassword(targetFaculty._id, finalPass);
+      if (res?.success) {
+        setResetModalFaculty(null);
+        setResetSuccessData({
+          email: targetFaculty.email,
+          name: targetFaculty.name,
+          password: finalPass,
+          role: targetFaculty.role || "faculty",
+        });
+        loadData();
+      }
+    } catch (err: any) {
+      showNotification("error", err.message || "Failed to reset password.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const handleModalSubmit = async (e: React.FormEvent) => {
@@ -174,9 +220,21 @@ export const Faculty: React.FC = () => {
           designation: form.designation,
           role: form.role,
           academicScope: form.academicScope,
-          status: form.status
+          status: form.status,
+          password: form.password && form.password.trim().length > 0 ? form.password.trim() : undefined,
         });
-        showNotification("success", `${form.role.toUpperCase()} record updated successfully!`);
+        setModalOpen(false);
+        loadData();
+        if (form.password && form.password.trim().length > 0) {
+          setResetSuccessData({
+            email: form.email,
+            name: form.name,
+            password: form.password.trim(),
+            role: form.role,
+          });
+        } else {
+          showNotification("success", `${form.role.toUpperCase()} record updated successfully!`);
+        }
       } else {
         // Create Faculty
         if (faculty.some(f => f.employeeId === form.employeeId.toUpperCase())) {
@@ -190,12 +248,18 @@ export const Faculty: React.FC = () => {
           designation: form.designation,
           role: form.role,
           academicScope: form.academicScope,
-          status: form.status
+          status: form.status,
+          password: form.password || "Faculty@123",
         });
-        showNotification("success", `${form.role.toUpperCase()} record created successfully!`);
+        setModalOpen(false);
+        loadData();
+        setResetSuccessData({
+          email: form.email,
+          name: form.name,
+          password: form.password || "Faculty@123",
+          role: form.role,
+        });
       }
-      setModalOpen(false);
-      loadData();
     } catch (err: any) {
       showNotification("error", err.message || "Failed to submit details.");
     } finally {
@@ -510,8 +574,27 @@ export const Faculty: React.FC = () => {
                   </ModTd>
                   <ModTd>
                     <div className="flex gap-2">
-                      <button onClick={() => openEditModal(r)} className="p-2 rounded-xl text-blue-500 hover:bg-blue-50 dark:hover:bg-white/5 transition-colors cursor-pointer border-0 bg-transparent"><Edit size={14} /></button>
-                      <button onClick={() => setDeleteConfirm(r)} className="p-2 rounded-xl text-red-500 hover:bg-red-50 dark:hover:bg-white/5 transition-colors cursor-pointer border-0 bg-transparent"><Trash2 size={14} /></button>
+                      <button
+                        onClick={() => openResetPasswordModal(r)}
+                        title="Reset / Edit Password"
+                        className="p-2 rounded-xl text-amber-500 hover:bg-amber-50 dark:hover:bg-white/5 transition-colors cursor-pointer border-0 bg-transparent"
+                      >
+                        <KeyRound size={14} />
+                      </button>
+                      <button
+                        onClick={() => openEditModal(r)}
+                        title="Edit Details"
+                        className="p-2 rounded-xl text-blue-500 hover:bg-blue-50 dark:hover:bg-white/5 transition-colors cursor-pointer border-0 bg-transparent"
+                      >
+                        <Edit size={14} />
+                      </button>
+                      <button
+                        onClick={() => setDeleteConfirm(r)}
+                        title="Delete Record"
+                        className="p-2 rounded-xl text-red-500 hover:bg-red-50 dark:hover:bg-white/5 transition-colors cursor-pointer border-0 bg-transparent"
+                      >
+                        <Trash2 size={14} />
+                      </button>
                     </div>
                   </ModTd>
                 </tr>
@@ -609,6 +692,53 @@ export const Faculty: React.FC = () => {
                   <option value="active">Active (Authorized)</option>
                   <option value="inactive">Inactive (Deauthorized)</option>
                 </select>
+              </div>
+
+              {/* Password Management in Add / Edit Modal */}
+              <div className={cn("p-3.5 rounded-2xl border space-y-2", dark ? "bg-white/5 border-white/10" : "bg-slate-50 border-slate-200")}>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <Lock size={13} className="text-[#0B3D91] dark:text-blue-400" />
+                    <label className={cn("text-xs font-bold", textPrimary)}>
+                      {editItem ? "Change Login Password" : "Login Password"}
+                    </label>
+                  </div>
+                  {editItem ? (
+                    <button
+                      type="button"
+                      onClick={() => setForm({ ...form, password: "Faculty@123" })}
+                      className="text-[10px] text-blue-500 font-bold hover:underline cursor-pointer border-0 bg-transparent"
+                    >
+                      Use Default (Faculty@123)
+                    </button>
+                  ) : (
+                    <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold bg-emerald-500/10 px-2 py-0.5 rounded-md">
+                      Default Assigned
+                    </span>
+                  )}
+                </div>
+
+                <div className="relative">
+                  <input
+                    type={showFormPassword ? "text" : "password"}
+                    placeholder={editItem ? "Leave empty to keep existing password" : "e.g. Faculty@123"}
+                    className={cn("w-full px-3 py-2 pr-9 rounded-xl border text-xs focus:outline-none font-mono", inputCls)}
+                    value={form.password}
+                    onChange={(e) => setForm({ ...form, password: e.target.value })}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowFormPassword(!showFormPassword)}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 border-0 bg-transparent cursor-pointer p-0"
+                  >
+                    {showFormPassword ? <EyeOff size={14} /> : <Eye size={14} />}
+                  </button>
+                </div>
+                <p className="text-[10px] text-gray-400">
+                  {editItem
+                    ? "Enter a new password to reset it, or leave blank to keep current credentials."
+                    : "The faculty/HOD/dean will use this password to sign into the institution portal."}
+                </p>
               </div>
 
               <div className="flex gap-2 pt-2">
@@ -809,6 +939,147 @@ export const Faculty: React.FC = () => {
                   </div>
                 </>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+      {/* --- Quick Reset / Change Password Dialog --- */}
+      {resetModalFaculty && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+          <div className={cn(
+            "rounded-3xl border p-6 w-full max-w-md shadow-2xl relative animate-in zoom-in-95 duration-200",
+            dark ? "bg-[#132052] border-white/10" : "bg-white border-[#0B3D91]/10"
+          )}>
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2.5 rounded-2xl bg-amber-500/10 text-amber-500">
+                  <KeyRound size={20} />
+                </div>
+                <div>
+                  <h3 className={cn("font-bold text-base", textPrimary)} style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+                    Reset Account Password
+                  </h3>
+                  <p className={cn("text-xs", textSub)}>{resetModalFaculty.name} ({resetModalFaculty.email})</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setResetModalFaculty(null)}
+                className="p-1 rounded-lg text-[#5A6E8E] hover:bg-red-50 dark:hover:bg-white/5 cursor-pointer border-0 bg-transparent"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className={cn("text-xs font-semibold", textSub)}>New Password</label>
+                  <button
+                    type="button"
+                    onClick={() => setCustomResetPassword("Faculty@123")}
+                    className="text-[10px] text-blue-500 font-bold hover:underline cursor-pointer border-0 bg-transparent"
+                  >
+                    Reset to Default (Faculty@123)
+                  </button>
+                </div>
+                <div className="relative">
+                  <input
+                    type={showResetPass ? "text" : "password"}
+                    required
+                    placeholder="Enter new password"
+                    className={cn("w-full px-3 py-2.5 pr-10 rounded-xl border text-sm focus:outline-none font-mono", inputCls)}
+                    value={customResetPassword}
+                    onChange={(e) => setCustomResetPassword(e.target.value)}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowResetPass(!showResetPass)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 border-0 bg-transparent cursor-pointer p-0"
+                  >
+                    {showResetPass ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
+                <p className="text-[11px] text-gray-400 mt-1">
+                  Once reset, the faculty member can immediately use this new password to sign in.
+                </p>
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setResetModalFaculty(null)}
+                  className="flex-1 py-2.5 rounded-xl border border-gray-300 text-gray-700 text-xs font-bold hover:bg-gray-50 cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={submitting || !customResetPassword.trim()}
+                  onClick={() => handleQuickResetPassword(resetModalFaculty, customResetPassword)}
+                  className="flex-1 py-2.5 rounded-xl bg-amber-600 text-white text-xs font-bold hover:bg-amber-700 flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-60 border-0 shadow-md shadow-amber-600/20"
+                >
+                  {submitting ? <Loader2 size={13} className="animate-spin" /> : <KeyRound size={13} />}
+                  Update Password
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* --- Credential Success Notice Modal --- */}
+      {resetSuccessData && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+          <div className={cn(
+            "rounded-3xl border p-6 w-full max-w-md shadow-2xl relative text-center animate-in zoom-in-95 duration-200",
+            dark ? "bg-[#132052] border-white/10 text-white" : "bg-white border-[#0B3D91]/10 text-[#0D1B3E]"
+          )}>
+            <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center mx-auto mb-3">
+              <CheckCircle2 size={26} />
+            </div>
+            <h3 className="font-bold text-lg mb-1" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+              Login Credentials Ready
+            </h3>
+            <p className={cn("text-xs mb-4", textSub)}>
+              Account ready for <strong>{resetSuccessData.name}</strong> ({resetSuccessData.role.toUpperCase()}). You can share these details with the member:
+            </p>
+
+            <div className={cn("p-4 rounded-2xl border text-left space-y-2 mb-5 font-mono text-xs", dark ? "bg-white/5 border-white/10" : "bg-slate-50 border-slate-200")}>
+              <div className="flex justify-between items-center">
+                <span className="text-gray-400 font-sans">Login Portal:</span>
+                <span className="font-bold text-[11px] truncate max-w-[200px]">{window.location.origin}/college/{portalSlug || "knit"}/login</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-gray-400 font-sans">Email (User):</span>
+                <span className="font-bold text-blue-500">{resetSuccessData.email}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-gray-400 font-sans">Password:</span>
+                <span className="font-bold text-emerald-500">{resetSuccessData.password}</span>
+              </div>
+            </div>
+
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  const text = `Faculty Feedback Portal Login\nURL: ${window.location.origin}/college/${portalSlug || "knit"}/login\nEmail: ${resetSuccessData.email}\nPassword: ${resetSuccessData.password}`;
+                  navigator.clipboard.writeText(text);
+                  setCopied(true);
+                  setTimeout(() => setCopied(false), 2000);
+                }}
+                className="flex-1 py-2.5 rounded-xl bg-[#0B3D91] hover:bg-[#0a348a] text-white text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer border-0 shadow-md shadow-[#0B3D91]/20"
+              >
+                {copied ? <Check size={14} className="text-emerald-400" /> : <Copy size={14} />}
+                {copied ? "Copied Credentials!" : "Copy Credentials"}
+              </button>
+              <button
+                type="button"
+                onClick={() => setResetSuccessData(null)}
+                className="px-5 py-2.5 rounded-xl border border-gray-300 text-gray-700 text-xs font-bold hover:bg-gray-50 cursor-pointer"
+              >
+                Close
+              </button>
             </div>
           </div>
         </div>

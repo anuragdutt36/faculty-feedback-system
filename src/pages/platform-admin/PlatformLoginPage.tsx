@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation, Link } from "react-router";
-import { Shield, Lock, Mail, ArrowRight, Sparkles } from "lucide-react";
+import { Shield, Lock, Mail, ArrowRight } from "lucide-react";
 import { usePlatformAuth } from "../../context/PlatformAuthContext.js";
 import { AuthPageLayout } from "../../components/common/AuthPageLayout.js";
 
@@ -58,29 +58,21 @@ export const PlatformLoginPage: React.FC = () => {
     }
   };
 
-  const handleQuickFillDefault = () => {
-    setUsername("platform.admin@facultyfeedback.in");
-    setPassword("PlatformAdmin2026!");
-    setErrorMessage("");
-  };
 
   return (
     <AuthPageLayout
-      brandTitle="Faculty Feedback"
-      brandSubtitle="Platform Superadmin Gateway"
-      icon={<Shield className="w-6 h-6" />}
+      icon={<Shield className="w-6 h-6 text-[#0B3D91]" />}
       title="Platform Administration"
-      subtitle="Sign in to manage registered institutions and platform-level settings."
+      subtitle="Sign in to manage registered institutions and platform-level settings"
       errorMessage={errorMessage}
       backLink={{
         to: "/",
         label: "Back to Platform Home",
       }}
-      footerText="Faculty Feedback Multi-Institution Platform • Restricted Operator Gateway"
     >
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+          <label className="block text-sm font-medium text-slate-700 mb-1.5">
             Platform Admin Email
           </label>
           <div className="relative">
@@ -94,20 +86,20 @@ export const PlatformLoginPage: React.FC = () => {
                 if (errorMessage) setErrorMessage("");
               }}
               placeholder="admin@facultyfeedback.in"
-              className="w-full bg-white border border-slate-300 rounded-lg pl-10 pr-4 py-2 text-xs sm:text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#0B3D91] focus:border-transparent transition-all"
+              className="w-full bg-white border border-slate-300 rounded-xl pl-10 pr-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#0B3D91]/30 focus:border-[#0B3D91] transition-all"
             />
           </div>
         </div>
 
         <div>
           <div className="flex items-center justify-between mb-1.5">
-            <label className="block text-xs font-semibold text-slate-700">
+            <label className="block text-sm font-medium text-slate-700">
               Password
             </label>
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
-              className="text-[11px] text-[#0B3D91] hover:underline font-medium cursor-pointer border-0 bg-transparent"
+              className="text-sm text-[#0B3D91] hover:underline font-medium cursor-pointer border-0 bg-transparent"
             >
               {showPassword ? "Hide" : "Show"}
             </button>
@@ -123,7 +115,7 @@ export const PlatformLoginPage: React.FC = () => {
                 if (errorMessage) setErrorMessage("");
               }}
               placeholder="••••••••••••"
-              className="w-full bg-white border border-slate-300 rounded-lg pl-10 pr-4 py-2 text-xs sm:text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#0B3D91] focus:border-transparent transition-all"
+              className="w-full bg-white border border-slate-300 rounded-xl pl-10 pr-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#0B3D91]/30 focus:border-[#0B3D91] transition-all"
             />
           </div>
         </div>
@@ -131,7 +123,7 @@ export const PlatformLoginPage: React.FC = () => {
         <button
           type="submit"
           disabled={loading}
-          className="w-full mt-2 py-2.5 px-4 rounded-lg bg-[#0B3D91] hover:bg-[#082d6c] text-white text-xs sm:text-sm font-semibold shadow-xs flex items-center justify-center gap-2 transition-all disabled:opacity-50 cursor-pointer border-0"
+          className="w-full mt-2 py-2.5 px-4 rounded-xl bg-[#0B3D91] hover:bg-[#082d6c] text-white text-sm font-semibold shadow-xs flex items-center justify-center gap-2 transition-all disabled:opacity-50 cursor-pointer border-0 active:scale-[0.99]"
         >
           {loading ? (
             <>
@@ -147,30 +139,17 @@ export const PlatformLoginPage: React.FC = () => {
         </button>
       </form>
 
-      {/* Quick Fill for local development */}
-      <div className="mt-5 pt-4 border-t border-slate-100 text-center">
-        <button
-          type="button"
-          onClick={handleQuickFillDefault}
-          className="text-xs text-slate-500 hover:text-slate-800 transition-colors inline-flex items-center gap-1.5 cursor-pointer bg-transparent border-0"
-        >
-          <Sparkles className="w-3.5 h-3.5 text-blue-600" />
-          <span>Fill Default Platform Credentials</span>
-        </button>
-      </div>
-
       {/* Switch to Institution Login */}
-      <div className="mt-3 pt-3 border-t border-slate-100 text-center">
-        <p className="text-xs text-slate-500">
+      <div className="mt-4 pt-3 border-t border-slate-100 text-center">
+        <p className="text-sm text-slate-500">
           Are you an institution administrator or student?{" "}
-          <button
-            type="button"
-            onClick={() => navigate("/institution-login")}
-            className="text-[#0B3D91] hover:underline font-semibold inline-flex items-center gap-1 ml-1 cursor-pointer bg-transparent border-0"
+          <Link
+            to="/institution-login"
+            className="text-[#0B3D91] hover:underline font-semibold inline-flex items-center gap-1 ml-1"
           >
             <span>Institution Login</span>
             <ArrowRight className="w-3 h-3" />
-          </button>
+          </Link>
         </p>
       </div>
     </AuthPageLayout>
@@ -178,3 +157,4 @@ export const PlatformLoginPage: React.FC = () => {
 };
 
 export default PlatformLoginPage;
+

@@ -8,6 +8,7 @@ import { FacultySubjectMapping } from "../models/mapping.model.js";
 import { FeedbackResponse } from "../models/feedback.model.js";
 import { CustomError } from "../middleware/errorHandler.js";
 import { logger } from "../utils/logger.js";
+import { env } from "../config/env.js";
 
 export class ProfilesService {
   // --- Faculty ---
@@ -91,42 +92,30 @@ export class ProfilesService {
     // 1. Determine role value
     const roleValue = data.role || (data.isHOD ? "hod" : "faculty");
 
-    // 2. Create or update the User record for password-based login
+    // 2. Create or update the User record with default or custom password
+    const assignedPassword = (data.password && data.password.trim().length > 0)
+      ? data.password.trim()
+      : (env.DEFAULT_FACULTY_PASSWORD || "Faculty@123");
+
+    const salt = await bcrypt.genSalt(12);
+    const hash = await bcrypt.hash(assignedPassword, salt);
+
     let userRecord = await User.findOne({ username: emailNorm });
 
-    if (data.password) {
-      const salt = await bcrypt.genSalt(12);
-      const hash = await bcrypt.hash(data.password, salt);
-
-      if (!userRecord) {
-        userRecord = await User.create({
-          username: emailNorm,
-          password: hash,
-          role: roleValue as any,
-          status: data.status || "active",
-          institutionId: instId,
-        });
-      } else {
-        userRecord.password = hash;
-        userRecord.role = roleValue as any;
-        userRecord.status = (data.status || "active") as any;
-        if (instId) userRecord.institutionId = instId as any;
-        await userRecord.save();
-      }
+    if (!userRecord) {
+      userRecord = await User.create({
+        username: emailNorm,
+        password: hash,
+        role: roleValue as any,
+        status: data.status || "active",
+        institutionId: instId,
+      });
     } else {
-      if (!userRecord) {
-        userRecord = await User.create({
-          username: emailNorm,
-          role: roleValue as any,
-          status: data.status || "active",
-          institutionId: instId,
-        });
-      } else {
-        userRecord.role = roleValue as any;
-        userRecord.status = (data.status || "active") as any;
-        if (instId) userRecord.institutionId = instId as any;
-        await userRecord.save();
-      }
+      userRecord.password = hash;
+      userRecord.role = roleValue as any;
+      userRecord.status = (data.status || "active") as any;
+      if (instId) userRecord.institutionId = instId as any;
+      await userRecord.save();
     }
 
     // 3. Create FacultyProfile linked to the User
@@ -157,7 +146,8 @@ export class ProfilesService {
 
     return {
       ...((populated as any).toObject?.() ?? populated),
-      _tempPasswordNotice: data.password ? undefined : "No password set. Please set a password for this account via Update.",
+      assignedPassword,
+      _tempPasswordNotice: `Initial login password set to: ${assignedPassword}`,
     };
   }
 
@@ -172,20 +162,22 @@ export class ProfilesService {
       await Branch.findOneAndUpdate({ coordinatorId: faculty._id, ...instFilter }, { $unset: { coordinatorId: "" } });
     }
 
-    if (updateData.password) {
+    if (updateData.password && updateData.password.trim().length > 0) {
+      const rawPass = updateData.password.trim();
       const emailToFind = faculty.email;
-      const userRecord = await User.findOne({ username: emailToFind });
+      let userRecord = await User.findOne({ username: emailToFind });
+      const salt = await bcrypt.genSalt(12);
+      const hash = await bcrypt.hash(rawPass, salt);
+
       if (userRecord) {
-        const salt = await bcrypt.genSalt(12);
-        userRecord.password = await bcrypt.hash(updateData.password, salt);
+        userRecord.password = hash;
         if (updateData.role) userRecord.role = updateData.role;
         if (updateData.status) userRecord.status = updateData.status;
         userRecord.refreshTokens = [];
         await userRecord.save();
+        updateData.userId = userRecord._id;
       } else {
         const roleValue = updateData.role || faculty.role || "faculty";
-        const salt = await bcrypt.genSalt(12);
-        const hash = await bcrypt.hash(updateData.password, salt);
         const newUser = await User.create({
           username: emailToFind,
           password: hash,
@@ -196,12 +188,15 @@ export class ProfilesService {
         updateData.userId = newUser._id;
       }
       delete updateData.password;
-    } else if (updateData.status || updateData.role) {
-      const userRecord = await User.findOne({ username: faculty.email });
-      if (userRecord) {
-        if (updateData.role) userRecord.role = updateData.role;
-        if (updateData.status) userRecord.status = updateData.status;
-        await userRecord.save();
+    } else {
+      delete updateData.password;
+      if (updateData.status || updateData.role) {
+        const userRecord = await User.findOne({ username: faculty.email });
+        if (userRecord) {
+          if (updateData.role) userRecord.role = updateData.role;
+          if (updateData.status) userRecord.status = updateData.status;
+          await userRecord.save();
+        }
       }
     }
 
@@ -209,6 +204,50 @@ export class ProfilesService {
       .populate("branchId");
 
     return updatedFaculty;
+  }
+
+  static async resetFacultyPassword(id: string, newPassword?: string, institutionId?: string | mongoose.Types.ObjectId) {
+    const instFilter = institutionId ? { institutionId } : {};
+    const faculty = await FacultyProfile.findOne({ _id: id, ...instFilter });
+    if (!faculty) throw new CustomError("Faculty profile not found", 404);
+
+    const passwordToSet = (newPassword && newPassword.trim().length > 0)
+      ? newPassword.trim()
+      : (env.DEFAULT_FACULTY_PASSWORD || "Faculty@123");
+
+    const salt = await bcrypt.genSalt(12);
+    const hash = await bcrypt.hash(passwordToSet, salt);
+
+    let userRecord = await User.findOne({ username: faculty.email });
+    const roleValue = faculty.role || (faculty.designation?.toLowerCase().includes("dean") ? "dean" : faculty.designation?.toLowerCase().includes("hod") ? "hod" : "faculty");
+
+    if (userRecord) {
+      userRecord.password = hash;
+      userRecord.role = roleValue as any;
+      userRecord.refreshTokens = [];
+      if (faculty.institutionId && !userRecord.institutionId) userRecord.institutionId = faculty.institutionId as any;
+      await userRecord.save();
+    } else {
+      userRecord = await User.create({
+        username: faculty.email,
+        password: hash,
+        role: roleValue as any,
+        status: faculty.status || "active",
+        institutionId: faculty.institutionId || institutionId || undefined,
+      });
+    }
+
+    faculty.userId = userRecord._id as any;
+    faculty.role = roleValue as any;
+    await faculty.save();
+
+    return {
+      facultyId: faculty._id,
+      name: faculty.name,
+      email: faculty.email,
+      role: roleValue,
+      newPassword: passwordToSet,
+    };
   }
 
   static async deleteFaculty(id: string, institutionId?: string | mongoose.Types.ObjectId) {
@@ -547,6 +586,21 @@ export class ProfilesService {
           ]
         });
 
+        const defaultPass = env.DEFAULT_FACULTY_PASSWORD || "Faculty@123";
+        const salt = await bcrypt.genSalt(12);
+        const hash = await bcrypt.hash(defaultPass, salt);
+
+        let userDoc = await User.findOne({ username: f.email.toLowerCase().trim() });
+        if (!userDoc) {
+          userDoc = await User.create({
+            username: f.email.toLowerCase().trim(),
+            password: hash,
+            role: "faculty",
+            institutionId,
+            status: f.status === "inactive" ? "inactive" : "active",
+          });
+        }
+
         if (profile) {
           profile.name = f.name;
           profile.email = f.email.toLowerCase().trim();
@@ -554,11 +608,12 @@ export class ProfilesService {
           profile.designation = f.designation;
           profile.branchId = branchDoc._id as any;
           profile.status = f.status === "inactive" ? "inactive" : "active";
+          profile.userId = userDoc._id as any;
           if (institutionId) profile.institutionId = institutionId as any;
           await profile.save();
         } else {
           await FacultyProfile.create({
-            userId: new mongoose.Types.ObjectId(),
+            userId: userDoc._id,
             employeeId: f.employeeId.toUpperCase(),
             name: f.name,
             email: f.email.toLowerCase().trim(),

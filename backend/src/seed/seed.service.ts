@@ -16,8 +16,13 @@ export class SeedService {
   static async ensurePlatformAdmin() {
     const platformAdminExists = await PlatformAdmin.findOne({ role: "superadmin" });
     if (!platformAdminExists) {
-      const email = (env.DEFAULT_PLATFORM_ADMIN_EMAIL || "platform.admin@facultyfeedback.in").toLowerCase().trim();
-      const rawPass = env.DEFAULT_PLATFORM_ADMIN_PASSWORD || "PlatformAdmin2026!";
+      if (!env.DEFAULT_PLATFORM_ADMIN_EMAIL || !env.DEFAULT_PLATFORM_ADMIN_PASSWORD) {
+        logger.warn("[Seed] Warning: DEFAULT_PLATFORM_ADMIN_EMAIL or DEFAULT_PLATFORM_ADMIN_PASSWORD not set. Platform Admin user was not created.");
+        return;
+      }
+      
+      const email = env.DEFAULT_PLATFORM_ADMIN_EMAIL.toLowerCase().trim();
+      const rawPass = env.DEFAULT_PLATFORM_ADMIN_PASSWORD;
       const salt = await bcrypt.genSalt(12);
       const hash = await bcrypt.hash(rawPass, salt);
 
@@ -32,37 +37,106 @@ export class SeedService {
     }
   }
 
-  static async ensureDefaultInstitution() {
-    // No automatic sample colleges seeded.
-    // Colleges are added strictly when registered by an institution and approved by the platform admin.
-  }
-
   static async ensureAdminUser() {
-    await this.ensurePlatformAdmin();
-    const adminExists = await User.findOne({ role: "admin" });
-    if (!adminExists) {
-      const adminEmail = (env.DEFAULT_ADMIN_EMAIL || "admin@knit.ac.in").toLowerCase().trim();
-      let hash = env.DEFAULT_ADMIN_PASSWORD_HASH;
-
-      if (!hash && env.DEFAULT_ADMIN_PASSWORD) {
-        const salt = await bcrypt.genSalt(12);
-        hash = await bcrypt.hash(env.DEFAULT_ADMIN_PASSWORD, salt);
-      }
-
-      if (hash) {
-        await User.create({
-          username: adminEmail,
-          password: hash,
-          role: "admin",
-          status: "active",
-        });
-        logger.info(`[Seed] Initialized admin user: ${adminEmail}`);
-      } else {
-        logger.warn("[Seed] Warning: No DEFAULT_ADMIN_PASSWORD or DEFAULT_ADMIN_PASSWORD_HASH provided. Admin user was not created.");
-      }
-    }
-    await this.ensureDefaultInstitution();
+    await SeedService.ensurePlatformAdmin();
+    await SeedService.ensureDefaultInstitution();
+    await SeedService.ensureFacultyUsers();
   }
+
+  static async ensureFacultyUsers() {
+    try {
+      const allFaculty = await FacultyProfile.find({});
+      if (allFaculty.length === 0) return;
+
+      const defaultPass = env.DEFAULT_FACULTY_PASSWORD || "Faculty@123";
+      const salt = await bcrypt.genSalt(12);
+      const hash = await bcrypt.hash(defaultPass, salt);
+
+      let provisionedCount = 0;
+      for (const fp of allFaculty) {
+        try {
+          const email = fp.email?.toLowerCase().trim();
+          if (!email) continue;
+
+          const roleVal = fp.role || (fp.designation?.toLowerCase().includes("dean") ? "dean" : fp.designation?.toLowerCase().includes("hod") ? "hod" : "faculty");
+
+          let user = await User.findOne({ username: email }).select("+password");
+          if (!user) {
+            user = await User.create({
+              username: email,
+              password: hash,
+              role: roleVal as any,
+              status: fp.status || "active",
+              institutionId: fp.institutionId,
+            });
+            provisionedCount++;
+          } else {
+            let needsSave = false;
+            if (!user.password) {
+              user.password = hash;
+              needsSave = true;
+              provisionedCount++;
+            }
+            if (!user.role || user.role === "student") {
+              user.role = roleVal as any;
+              needsSave = true;
+            }
+            if (fp.institutionId && !user.institutionId) {
+              user.institutionId = fp.institutionId;
+              needsSave = true;
+            }
+            if (needsSave) {
+              await user.save();
+            }
+          }
+
+          if (!fp.userId || fp.userId.toString() !== user._id.toString() || fp.role !== roleVal) {
+            fp.userId = user._id as any;
+            fp.role = roleVal as any;
+            await fp.save();
+          }
+        } catch (itemErr: any) {
+          logger.warn(`[Seed] Notice syncing faculty ${fp.email}: ${itemErr.message}`);
+        }
+      }
+
+      if (provisionedCount > 0) {
+        logger.info(`[Seed] Provisioned default login credentials for ${provisionedCount} faculty/HOD/dean accounts (Default Password: ${defaultPass})`);
+      }
+    } catch (err: any) {
+      logger.warn(`[Seed] Faculty user credentials initialization notice: ${err.message}`);
+    }
+  }
+
+  static async ensureDefaultInstitution() {
+    try {
+      let knit = await Institution.findOne({ slug: "knit" });
+      if (knit) {
+        const knitId = knit._id;
+        await Promise.all([
+          Course.updateMany({ institutionId: { $in: [null, undefined] } }, { $set: { institutionId: knitId } }),
+          Branch.updateMany({ institutionId: { $in: [null, undefined] } }, { $set: { institutionId: knitId } }),
+          Subject.updateMany({ institutionId: { $in: [null, undefined] } }, { $set: { institutionId: knitId } }),
+          FacultyProfile.updateMany({ institutionId: { $in: [null, undefined] } }, { $set: { institutionId: knitId } }),
+          FacultySubjectMapping.updateMany({ institutionId: { $in: [null, undefined] } }, { $set: { institutionId: knitId } }),
+          RollMapping.updateMany({ institutionId: { $in: [null, undefined] } }, { $set: { institutionId: knitId } }),
+          FeedbackSession.updateMany({ institutionId: { $in: [null, undefined] } }, { $set: { institutionId: knitId } }),
+          Question.updateMany({ institutionId: { $in: [null, undefined] } }, { $set: { institutionId: knitId } }),
+          SystemSettings.updateMany({ institutionId: { $in: [null, undefined] } }, { $set: { institutionId: knitId } }),
+        ]);
+      }
+
+      // Ensure standard Question Bank for all registered institutions
+      const allInstitutions = await Institution.find({ status: { $in: ["approved", "active"] } });
+      for (const inst of allInstitutions) {
+        await SeedService.seedNewInstitutionData(inst._id, inst.name, inst.website || inst.slug);
+      }
+    } catch (err: any) {
+      logger.warn(`[Seed] Tenancy sync notice: ${err.message}`);
+    }
+  }
+
+
 
   static async clearDatabase() {
     logger.info("Clearing database (keeping admin)...");
@@ -82,8 +156,8 @@ export class SeedService {
     await ActiveSubmissionToken.deleteMany({});
     await SystemSettings.deleteMany({});
     
-    // Delete non-admin users
-    await User.deleteMany({ role: { $ne: "admin" } });
+    // Delete all users
+    await User.deleteMany({});
     
     // Seed default settings
     await SystemSettings.create({
@@ -102,13 +176,35 @@ export class SeedService {
     logger.info("Resetting and seeding database with realistic KNIT Sultanpur data...");
     await this.clearDatabase();
 
-    // 1. Ensure admin user exists
-    await this.ensureAdminUser();
+    // 1. Ensure platform admin exists
+    await this.ensurePlatformAdmin();
+
+    // 1.5. Find or create KNIT institution tenant record
+    let knit = await Institution.findOne({ slug: "knit" });
+    if (!knit) {
+      knit = await Institution.create({
+        institutionId: "INS-2026-0001",
+        name: "Kamla Nehru Institute of Technology, Sultanpur",
+        slug: "knit",
+        type: "Autonomous Institute",
+        website: "https://knit.ac.in",
+        officialEmail: "director@knit.ac.in",
+        status: "active",
+        settings: {
+          systemName: "KNIT",
+          domainRestriction: "knit.ac.in",
+          googleLoginEnabled: true,
+          themeMode: "dark",
+          accentColor: "#0B3D91",
+        },
+      });
+    }
+    const knitId = knit._id;
 
     // 2. Create Courses
-    const btech = await Course.create({ name: "Bachelor of Technology", duration: 4 });
-    const mca = await Course.create({ name: "Master of Computer Applications", duration: 2 });
-    const mtech = await Course.create({ name: "Master of Technology", duration: 2 });
+    const btech = await Course.create({ name: "Bachelor of Technology", duration: 4, institutionId: knitId });
+    const mca = await Course.create({ name: "Master of Computer Applications", duration: 2, institutionId: knitId });
+    const mtech = await Course.create({ name: "Master of Technology", duration: 2, institutionId: knitId });
 
     // 3. Create Branches
     const branchesData = [
@@ -133,6 +229,7 @@ export class SeedService {
         code: b.code,
         name: b.name,
         courseId: b.courseId,
+        institutionId: knitId,
         status: "active"
       });
       branchDocs[b.code] = doc;
@@ -177,18 +274,43 @@ export class SeedService {
       { name: "Dr. Ram Chandra", email: "ram.chandra@knit.ac.in", dept: "Civil", branchCode: "MT-SE", design: "Associate Professor" }
     ];
 
+    // 4. Create 45 Realistic Faculty Profiles & Login Credentials
+    const defaultFacultyPassword = env.DEFAULT_FACULTY_PASSWORD || "Faculty@123";
+    const facultySalt = await bcrypt.genSalt(12);
+    const facultyPasswordHash = await bcrypt.hash(defaultFacultyPassword, facultySalt);
+
     const facultyDocs: Record<string, any[]> = {};
     let facCount = 1;
     for (const f of facultyList) {
       const branch = branchDocs[f.branchCode];
+      const emailNorm = f.email.toLowerCase().trim();
+      const roleVal = f.design.toLowerCase().includes("dean") ? "dean" : f.design.toLowerCase().includes("hod") ? "hod" : "faculty";
+
+      let userDoc = await User.findOne({ username: emailNorm });
+      if (!userDoc) {
+        userDoc = await User.create({
+          username: emailNorm,
+          password: facultyPasswordHash,
+          role: roleVal as any,
+          status: "active",
+        });
+      } else {
+        userDoc.password = facultyPasswordHash;
+        userDoc.role = roleVal as any;
+        userDoc.status = "active";
+        await userDoc.save();
+      }
+
       const doc = await FacultyProfile.create({
-        userId: new mongoose.Types.ObjectId(),
+        userId: userDoc._id,
         employeeId: `FAC-${String(facCount++).padStart(3, "0")}`,
         name: f.name,
-        email: f.email,
+        email: emailNorm,
         phone: `+91-98${Math.floor(10000000 + Math.random() * 90000000)}`,
         department: f.dept,
         designation: f.design,
+        role: roleVal,
+        academicScope: roleVal === "dean" ? "All Departments" : `${f.dept} Department`,
         branchId: branch._id,
         status: "active"
       });
@@ -358,58 +480,6 @@ export class SeedService {
       await RollMapping.create(rm);
     }
 
-    // 9. Feedback Sessions (Active sessions matching previous semesters: MCA Sem 1, CSE Sem 3, IT Sem 5)
-    const mcaSession = await FeedbackSession.create({
-      name: "MCA 1st Sem Feedback Session - 2025-26",
-      courseId: branchDocs["MCA"].courseId,
-      branchId: branchDocs["MCA"]._id,
-      year: 1,
-      semester: 1,
-      academicYear: "2025-26",
-      status: "active",
-      startDate: new Date(),
-      endDate: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000),
-      questions: questionDocs.map(q => q._id)
-    });
-
-    const cseSession = await FeedbackSession.create({
-      name: "B.Tech CSE 3rd Sem Feedback Session - 2025-26",
-      courseId: branchDocs["CSE"].courseId,
-      branchId: branchDocs["CSE"]._id,
-      year: 2,
-      semester: 3,
-      academicYear: "2025-26",
-      status: "active",
-      startDate: new Date(),
-      endDate: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000),
-      questions: questionDocs.map(q => q._id)
-    });
-
-    const itSession = await FeedbackSession.create({
-      name: "B.Tech IT 5th Sem Feedback Session - 2025-26",
-      courseId: branchDocs["IT"].courseId,
-      branchId: branchDocs["IT"]._id,
-      year: 3,
-      semester: 5,
-      academicYear: "2025-26",
-      status: "active",
-      startDate: new Date(),
-      endDate: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000),
-      questions: questionDocs.map(q => q._id)
-    });
-
-    const mcaClosedSession = await FeedbackSession.create({
-      name: "MCA 2nd Sem Feedback Session (Closed) - 2025-26",
-      courseId: branchDocs["MCA"].courseId,
-      branchId: branchDocs["MCA"]._id,
-      year: 1,
-      semester: 2,
-      academicYear: "2025-26",
-      status: "closed",
-      startDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
-      endDate: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000),
-      questions: questionDocs.map(q => q._id)
-    });
 
     logger.info("Successfully seeded database with all KNIT sample master profiles.");
   }

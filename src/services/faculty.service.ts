@@ -25,6 +25,13 @@ export const facultyService = {
     });
   },
 
+  resetPassword: async (id: string, newPassword?: string) => {
+    return await apiFetch(`/profiles/faculty/${id}/reset-password`, {
+      method: "POST",
+      body: JSON.stringify({ newPassword }),
+    });
+  },
+
   importFaculty: async (file: File) => {
     return await apiFetch("/profiles/faculty/import", {
       method: "POST",

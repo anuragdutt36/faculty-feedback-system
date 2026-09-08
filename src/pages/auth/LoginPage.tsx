@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate, useSearchParams, Link } from "react-router";
+import { useNavigate, useSearchParams, Link, useLocation } from "react-router";
 import {
   Eye,
   EyeOff,
@@ -7,62 +7,116 @@ import {
   Lock,
   RefreshCw,
   ShieldCheck,
-  GraduationCap,
-  AlertCircle,
-  ChevronLeft,
   Users,
   BookOpen,
-  Building2
+  Building2,
+  ArrowLeft,
+  ArrowRight,
+  CheckCircle2
 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext.js";
 import { useSettings } from "../../context/SettingsContext.js";
 import { useTenant } from "../../context/TenantContext.js";
-import { PrivacyBanner } from "../../components/common/PrivacyBanner.js";
 import { getFormattedLogoUrl } from "../../services/api.js";
 import { AuthPageLayout } from "../../components/common/AuthPageLayout.js";
 
-// Login modes map to distinct authentication flows
-type LoginMode = "select" | "student" | "faculty" | "hod" | "dean" | "admin";
+type LoginMode = "student" | "faculty" | "hod" | "dean" | "admin";
 
-const ROLE_LABELS: Record<LoginMode, string> = {
-  select: "Sign In",
-  student: "Student Login",
-  faculty: "Faculty Login",
-  hod: "HOD Login",
-  dean: "Dean Login",
-  admin: "Administrator Login",
-};
+interface StaffRoleItem {
+  id: LoginMode;
+  label: string;
+  shortLabel: string;
+  roleTitle: string;
+  icon: React.ComponentType<{ className?: string; size?: number }>;
+  desc: string;
+  badge: string;
+}
+
+const STAFF_ROLES: StaffRoleItem[] = [
+  {
+    id: "faculty",
+    label: "Faculty",
+    shortLabel: "Faculty",
+    roleTitle: "Faculty",
+    icon: BookOpen,
+    desc: "Teaching staff",
+    badge: "Faculty Portal",
+  },
+  {
+    id: "hod",
+    label: "HOD",
+    shortLabel: "HOD",
+    roleTitle: "Head of Department",
+    icon: Users,
+    desc: "Head of Dept",
+    badge: "Department Scope",
+  },
+  {
+    id: "dean",
+    label: "Dean",
+    shortLabel: "Dean",
+    roleTitle: "Academic Dean",
+    icon: Building2,
+    desc: "Academic dean",
+    badge: "Academic Scope",
+  },
+  {
+    id: "admin",
+    label: "Admin",
+    shortLabel: "Admin",
+    roleTitle: "Administrator",
+    icon: Shield,
+    desc: "Control console",
+    badge: "Control Console",
+  },
+];
 
 export const LoginPage: React.FC = () => {
   const { login, staffLogin, googleLogin, isAuthenticated, user } = useAuth();
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-  const { systemName, instituteName, googleLoginEnabled, domainRestriction, logoUrl: globalLogoUrl } = useSettings();
+  const location = useLocation();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const { systemName, instituteName, googleLoginEnabled, domainRestriction } = useSettings();
   const { institution: tenantInst, loading: tenantLoading, error: tenantError, isSuspended, portalSlug } = useTenant();
 
   const modeParam = searchParams.get("mode") as LoginMode | null;
   const isLegacyAdmin = searchParams.get("admin") === "true";
-  const currentMode: LoginMode = modeParam || (isLegacyAdmin ? "admin" : "select");
 
+  // Default mode is always STUDENT unless explicitly requested via URL
+  const initialMode: LoginMode = (modeParam && ["student", "faculty", "hod", "dean", "admin"].includes(modeParam))
+    ? modeParam
+    : (isLegacyAdmin ? "admin" : "student");
+
+  const [currentMode, setCurrentMode] = useState<LoginMode>(initialMode);
   const [showPass, setShowPass] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loadingState, setLoadingState] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
 
-  const isStaffMode = ["faculty", "hod", "dean"].includes(currentMode);
-  const isAdminMode = currentMode === "admin";
-  const isStudentMode = currentMode === "student";
-  const isSelectMode = currentMode === "select";
+  // Sync mode with query parameters
+  useEffect(() => {
+    if (modeParam && ["student", "faculty", "hod", "dean", "admin"].includes(modeParam)) {
+      setCurrentMode(modeParam);
+    } else if (!modeParam && !isLegacyAdmin) {
+      setCurrentMode("student");
+    }
+  }, [modeParam, isLegacyAdmin]);
 
-  // Redirect if already authenticated
+  // Redirect if already logged in
   useEffect(() => {
     if (isAuthenticated && user) {
       navigate(`/${user.role}`);
     }
   }, [isAuthenticated, user, navigate]);
 
-  // Initialize Google One Tap ONLY for student mode (never for staff/admin)
+  const isStudentMode = currentMode === "student";
+  const isStaffMode = ["faculty", "hod", "dean"].includes(currentMode);
+  const isAdminMode = currentMode === "admin";
+
+  const currentStaffRole = STAFF_ROLES.find((r) => r.id === currentMode);
+
+  // Initialize Google One Tap / Button for student mode
   useEffect(() => {
     if (isStudentMode && googleLoginEnabled) {
       let interval: any;
@@ -108,76 +162,21 @@ export const LoginPage: React.FC = () => {
     }
   }, [isStudentMode, googleLoginEnabled]);
 
-  const instName = tenantInst?.name || instituteName || "Institution";
-  const sysName = tenantInst?.settings?.systemName || systemName || "Faculty Feedback";
+  const instName = tenantInst?.name || instituteName || "Institution Portal";
   const allowedDomain = tenantInst?.settings?.domainRestriction || domainRestriction || (portalSlug ? `${portalSlug}.ac.in` : "");
   const logoUrl = getFormattedLogoUrl(tenantInst?.logoUrl || tenantInst?.settings?.logoUrl || "");
 
-  if (tenantLoading) {
-    return (
-      <div className="min-h-screen bg-[#070D1E] flex flex-col items-center justify-center text-white font-sans">
-        <div className="w-10 h-10 border-3 border-blue-500/30 border-t-blue-500 rounded-full animate-spin mb-4" />
-        <p className="text-sm font-medium text-slate-400">Loading institution login portal...</p>
-      </div>
-    );
-  }
-
-  if (isSuspended) {
-    return (
-      <div className="min-h-screen bg-[#070D1E] flex flex-col items-center justify-center p-6 text-center text-white font-sans">
-        <div className="w-16 h-16 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center mb-4">
-          <Building2 className="w-8 h-8" />
-        </div>
-        <h1 className="text-2xl font-bold mb-2">Portal Access Suspended</h1>
-        <p className="text-sm text-slate-400 max-w-md mb-6 leading-relaxed">
-          Access to this institution portal has been temporarily suspended by platform administration.
-        </p>
-        <Link
-          to="/"
-          className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold no-underline transition-all"
-        >
-          Return to Platform Home
-        </Link>
-      </div>
-    );
-  }
-
-  if (!tenantInst) {
-    return (
-      <div className="min-h-screen bg-[#070D1E] flex flex-col items-center justify-center p-6 text-center text-white font-sans">
-        <div className="w-16 h-16 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-400 flex items-center justify-center mb-4">
-          <Building2 className="w-8 h-8" />
-        </div>
-        <span className="px-3 py-1 rounded-full bg-red-500/10 text-red-400 text-xs font-semibold border border-red-500/20 mb-3 uppercase tracking-wider">
-          Portal Not Available
-        </span>
-        <h1 className="text-2xl font-bold mb-2">Institution Portal Not Found or Not Approved</h1>
-        <p className="text-sm text-slate-400 max-w-lg mb-6 leading-relaxed">
-          {tenantError || `The institution portal '/${portalSlug}' does not exist, has been deleted by platform administrators, or is pending verification.`}
-        </p>
-        <div className="flex flex-wrap items-center justify-center gap-3">
-          <Link
-            to="/register-institution"
-            className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold no-underline transition-all shadow-lg shadow-blue-600/20"
-          >
-            Register Institution Application
-          </Link>
-          <Link
-            to="/application-status"
-            className="px-5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700/60 text-xs font-semibold no-underline transition-all"
-          >
-            Check Application Status
-          </Link>
-          <Link
-            to="/"
-            className="px-5 py-2.5 rounded-xl bg-slate-800/50 hover:bg-slate-800 text-slate-400 hover:text-white border border-slate-800 text-xs font-semibold no-underline transition-all"
-          >
-            Platform Landing Page
-          </Link>
-        </div>
-      </div>
-    );
-  }
+  const handleSwitchMode = (mode: LoginMode) => {
+    setCurrentMode(mode);
+    setErrorMsg("");
+    setEmail("");
+    setPassword("");
+    if (mode === "student") {
+      setSearchParams({}, { replace: true });
+    } else {
+      setSearchParams({ mode }, { replace: true });
+    }
+  };
 
   const handleGoogleCredential = async (idToken: string) => {
     setLoadingState(true);
@@ -185,7 +184,7 @@ export const LoginPage: React.FC = () => {
     try {
       await googleLogin(idToken);
     } catch (err: any) {
-      setErrorMsg(err.message || "Google Sign-In failed. Only official institution emails registered in records are allowed.");
+      setErrorMsg(err.message || "Google Sign-In failed. Please use your official student Google account.");
       setLoadingState(false);
     }
   };
@@ -200,193 +199,150 @@ export const LoginPage: React.FC = () => {
         try {
           win.google.accounts.id.prompt((notification: any) => {
             if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
-              console.warn("Google One Tap prompt failed to display.");
+              console.warn("Google prompt not displayed.");
             }
           });
         } catch {
-          console.error("Google prompt failed.");
+          console.error("Google prompt error.");
         }
       }
     }
   };
 
-  // Staff login handler — calls /api/auth/staff/login, ZERO Google OAuth
   const handleStaffLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!email.trim() || !password.trim()) {
+      setErrorMsg("Please enter both your official email address and password.");
+      return;
+    }
     setLoadingState(true);
     setErrorMsg("");
     try {
-      await staffLogin(email, password);
+      await staffLogin(email.trim(), password);
     } catch (err: any) {
-      setErrorMsg(err.message || "Invalid username or password.");
+      setErrorMsg(err.message || "Invalid email or password. Please verify your credentials.");
       setLoadingState(false);
     }
   };
 
-  // Admin login handler — calls /api/auth/login
   const handleAdminLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!email.trim() || !password.trim()) {
+      setErrorMsg("Please enter your administrator username and password.");
+      return;
+    }
     setLoadingState(true);
     setErrorMsg("");
     try {
-      await login(email, password);
+      await login(email.trim(), password);
     } catch (err: any) {
-      setErrorMsg(err.message || "Failed to authenticate. Please check your credentials.");
+      setErrorMsg(err.message || "Invalid administrator credentials. Please check your username and password.");
       setLoadingState(false);
     }
   };
 
-  const navigateToMode = (mode: LoginMode) => {
-    setErrorMsg("");
-    setEmail("");
-    setPassword("");
-    if (mode === "select") {
-      navigate("?");
-    } else {
-      navigate(`?mode=${mode}`);
-    }
-  };
+  if (tenantLoading) {
+    return (
+      <div className="min-h-screen bg-[#F8FAFC] flex flex-col items-center justify-center text-slate-800 font-sans">
+        <div className="w-9 h-9 border-3 border-blue-600/30 border-t-blue-600 rounded-full animate-spin mb-3" />
+        <p className="text-xs font-medium text-slate-500">Loading portal...</p>
+      </div>
+    );
+  }
 
-  // Role selector cards for the initial screen
-  const roleCards = [
-    {
-      mode: "student" as LoginMode,
-      label: "Student",
-      icon: <GraduationCap className="w-6 h-6" />,
-      desc: "Sign in with your institutional Google account",
-      color: "blue",
-      bgClass: "bg-blue-50 hover:bg-blue-100 border-blue-200",
-      iconClass: "bg-blue-100 text-blue-700",
-      textClass: "text-blue-900",
-    },
-    {
-      mode: "faculty" as LoginMode,
-      label: "Faculty",
-      icon: <BookOpen className="w-6 h-6" />,
-      desc: "Sign in with your email and password",
-      color: "emerald",
-      bgClass: "bg-emerald-50 hover:bg-emerald-100 border-emerald-200",
-      iconClass: "bg-emerald-100 text-emerald-700",
-      textClass: "text-emerald-900",
-    },
-    {
-      mode: "hod" as LoginMode,
-      label: "HOD",
-      icon: <Users className="w-6 h-6" />,
-      desc: "Sign in with your email and password",
-      color: "purple",
-      bgClass: "bg-purple-50 hover:bg-purple-100 border-purple-200",
-      iconClass: "bg-purple-100 text-purple-700",
-      textClass: "text-purple-900",
-    },
-    {
-      mode: "dean" as LoginMode,
-      label: "Dean",
-      icon: <Building2 className="w-6 h-6" />,
-      desc: "Sign in with your email and password",
-      color: "amber",
-      bgClass: "bg-amber-50 hover:bg-amber-100 border-amber-200",
-      iconClass: "bg-amber-100 text-amber-700",
-      textClass: "text-amber-900",
-    },
-    {
-      mode: "admin" as LoginMode,
-      label: "Administrator",
-      icon: <Shield className="w-6 h-6" />,
-      desc: "Sign in with your admin credentials",
-      color: "slate",
-      bgClass: "bg-slate-50 hover:bg-slate-100 border-slate-200",
-      iconClass: "bg-slate-200 text-slate-700",
-      textClass: "text-slate-900",
-    },
-  ];
+  if (isSuspended) {
+    return (
+      <div className="min-h-screen bg-[#F8FAFC] flex flex-col items-center justify-center p-6 text-center text-slate-900 font-sans">
+        <div className="w-14 h-14 rounded-2xl bg-amber-50 border border-amber-200 text-amber-600 flex items-center justify-center mb-4 shadow-xs">
+          <Building2 className="w-7 h-7" />
+        </div>
+        <h1 className="text-xl font-bold mb-2">Portal Suspended</h1>
+        <p className="text-xs text-slate-600 max-w-sm mb-5 leading-relaxed">
+          Access to this portal is currently paused by platform administration.
+        </p>
+        <Link
+          to="/"
+          className="px-4 py-2 rounded-xl bg-[#0B3D91] hover:bg-[#093276] text-white text-xs font-semibold no-underline shadow-xs"
+        >
+          Back to Platform Home
+        </Link>
+      </div>
+    );
+  }
 
-  const getPortalTitle = () => {
-    if (isSelectMode) return instName;
-    return ROLE_LABELS[currentMode];
-  };
-
-  const getPortalSubtitle = () => {
-    if (isSelectMode) return "Select your role to sign in";
-    if (isStudentMode) return "Sign in with your official institutional Google account";
-    if (isStaffMode) return `Sign in with your official email and password`;
-    return "Sign in with your administrator credentials";
-  };
+  if (!tenantInst) {
+    return (
+      <div className="min-h-screen bg-[#F8FAFC] flex flex-col items-center justify-center p-6 text-center text-slate-900 font-sans">
+        <div className="w-14 h-14 rounded-2xl bg-red-50 border border-red-200 text-red-600 flex items-center justify-center mb-4 shadow-xs">
+          <Building2 className="w-7 h-7" />
+        </div>
+        <h1 className="text-xl font-bold mb-2">Institution Not Found</h1>
+        <p className="text-xs text-slate-600 max-w-sm mb-5 leading-relaxed">
+          {tenantError || `The institution portal '/${portalSlug}' does not exist.`}
+        </p>
+        <Link
+          to="/institution-login"
+          className="px-4 py-2 rounded-xl bg-[#0B3D91] hover:bg-[#093276] text-white text-xs font-semibold no-underline shadow-xs"
+        >
+          Find Your Institution
+        </Link>
+      </div>
+    );
+  }
 
   return (
     <AuthPageLayout
-      brandTitle={instName}
-      brandSubtitle={`${sysName} Feedback Portal`}
-      headerRightAction={
-        <Link
-          to={location.pathname.startsWith("/college/") ? location.pathname.replace(/\/login.*$/, "") : (portalSlug ? `/college/${portalSlug}` : "/")}
-          className="text-xs font-semibold text-slate-600 hover:text-[#0B3D91] transition-colors no-underline flex items-center gap-1"
-        >
-          <span>← College Home</span>
-        </Link>
-      }
       icon={
         logoUrl ? (
-          <img src={logoUrl} alt={instName} className="h-8 w-auto object-contain max-w-[120px]" />
+          <img src={logoUrl} alt={instName} className="h-7 w-7 object-contain" />
         ) : (
-          <Lock className="w-6 h-6" />
+          <Building2 className="w-6 h-6 text-[#0B3D91]" />
         )
       }
-      title={getPortalTitle()}
-      subtitle={getPortalSubtitle()}
+      title={isStudentMode ? instName : (currentStaffRole?.roleTitle || "Staff Sign In")}
+      subtitle={
+        isStudentMode ? (
+          <span className="inline-flex items-center gap-1.5 flex-wrap justify-center">
+            <span>Student & Academic Portal</span>
+            <span className="text-slate-300">•</span>
+            <Link
+              to="/institution-login"
+              className="text-[#0B3D91] hover:underline font-semibold"
+            >
+              Change college
+            </Link>
+          </span>
+        ) : (
+          "Sign in with your assigned institutional email & password"
+        )
+      }
       errorMessage={errorMsg}
       backLink={
-        !isSelectMode
+        !isStudentMode
           ? {
-              label: "Back to Role Selection",
-              onClick: () => navigateToMode("select"),
+              label: "Back to Student Login",
+              onClick: () => handleSwitchMode("student"),
             }
           : {
-              label: "Back to College Portal Home",
-              to: location.pathname.startsWith("/college/") ? location.pathname.replace(/\/login.*$/, "") : (portalSlug ? `/college/${portalSlug}` : "/"),
+              label: portalSlug ? "Back to College Home" : "Back to Platform Home",
+              to: portalSlug ? `/college/${portalSlug}` : "/",
             }
       }
-      footerText={`© ${new Date().getFullYear()} ${instName} • All rights reserved`}
     >
-      {/* Privacy banner for student mode */}
-      {isStudentMode && <div className="mb-5"><PrivacyBanner compact /></div>}
-
       {/* ============================================================
-          ROLE SELECTOR SCREEN
-      ============================================================ */}
-      {isSelectMode && (
-        <div className="space-y-2">
-          {roleCards.map((card) => (
-            <button
-              key={card.mode}
-              type="button"
-              onClick={() => navigateToMode(card.mode)}
-              className={`w-full flex items-center gap-3 p-3.5 border rounded-xl text-left transition-all cursor-pointer ${card.bgClass}`}
-            >
-              <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${card.iconClass}`}>
-                {card.icon}
-              </div>
-              <div>
-                <div className={`text-sm font-bold ${card.textClass}`}>{card.label}</div>
-                <div className="text-[11px] text-slate-500 mt-0.5">{card.desc}</div>
-              </div>
-            </button>
-          ))}
-        </div>
-      )}
-
-      {/* ============================================================
-          STUDENT — Google OAuth
+          VIEW 1: CLEAN PRIMARY STUDENT LOGIN
       ============================================================ */}
       {isStudentMode && (
-        <div className="space-y-4 text-center">
+        <div className="space-y-4 animate-in fade-in duration-150">
+          {/* Primary Student Google SSO */}
           {googleLoginEnabled ? (
-            <>
+            <div className="space-y-2.5">
               <button
                 type="button"
+                id="student-google-signin-btn"
                 onClick={handleGoogleButtonClick}
                 disabled={loadingState}
-                className="w-full py-3 px-4 rounded-lg bg-[#0B3D91] hover:bg-[#082d6c] text-white font-semibold text-xs sm:text-sm shadow-xs transition-all flex items-center justify-center gap-2.5 cursor-pointer disabled:opacity-50"
+                className="w-full py-3 px-4 rounded-full bg-white hover:bg-slate-50 text-slate-800 font-semibold text-sm border border-slate-200 hover:border-slate-300 shadow-sm transition-all flex items-center justify-center gap-3 cursor-pointer disabled:opacity-50 active:scale-[0.99]"
               >
                 <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
                   <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
@@ -394,161 +350,227 @@ export const LoginPage: React.FC = () => {
                   <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
                   <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
                 </svg>
-                <span>{loadingState ? "Authenticating..." : "Continue with Google"}</span>
+                <span>{loadingState ? "Signing in..." : "Continue with Google (Student SSO)"}</span>
               </button>
-              <p className="text-xs text-slate-500 mt-2">
-                Use your official institutional Google account.
-              </p>
+
+              {/* Subtle Privacy & Domain Indicator */}
+              <div className="flex items-center justify-between px-2 mt-3 text-xs">
+                <span className="flex items-center gap-1.5 text-emerald-700 font-semibold tracking-wide">
+                  <CheckCircle2 size={14} className="text-emerald-600" />
+                  100% Anonymous Feedback
+                </span>
+                {allowedDomain && (
+                  <span className="text-slate-400 font-mono tracking-wide">
+                    @{allowedDomain}
+                  </span>
+                )}
+              </div>
+
               <div id="google-signin-btn-hidden" className="hidden"></div>
-            </>
-          ) : (
-            <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl text-center">
-              <p className="text-xs text-amber-800 font-semibold mb-1">Google Sign-In Disabled</p>
-              <p className="text-[11px] text-amber-600 leading-normal">
-                Google sign-in is currently disabled by the administrator. Please try again later.
-              </p>
             </div>
+          ) : (
+            <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-center">
+              <p className="text-sm text-amber-800 font-medium">Google Sign-In is temporarily unavailable.</p>
+            </div>
+          )}
+
+          {/* Secondary Switcher Option for Faculty, HOD, Dean & Admin */}
+          <div className="mt-8 pt-8 border-t border-slate-100 flex flex-col items-center justify-center gap-2 text-center">
+            <p className="text-sm text-slate-500 font-medium">
+              Are you a faculty, HOD, dean or admin?
+            </p>
+            <button
+              type="button"
+              onClick={() => handleSwitchMode("faculty")}
+              className="text-[#0B3D91] hover:text-[#093276] hover:underline font-bold text-sm inline-flex items-center gap-1 cursor-pointer bg-transparent border-0 transition-colors"
+            >
+              <span>Staff & Admin Login</span>
+              <ArrowRight className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ============================================================
+          VIEW 2: STAFF & ADMIN CREDENTIAL LOGIN
+      ============================================================ */}
+      {!isStudentMode && (
+        <div className="space-y-4 animate-in fade-in duration-150">
+          {/* Quick Staff Role Segmented Tabs */}
+          <div className="grid grid-cols-4 p-1 bg-slate-100 rounded-xl border border-slate-200/80 gap-1">
+            {STAFF_ROLES.map((role) => {
+              const Icon = role.icon;
+              const isSelected = role.id === currentMode;
+              return (
+                <button
+                  key={role.id}
+                  type="button"
+                  onClick={() => handleSwitchMode(role.id)}
+                  className={`flex flex-col items-center justify-center py-1.5 px-1 rounded-lg text-center transition-all cursor-pointer ${
+                    isSelected
+                      ? "bg-white text-[#0B3D91] shadow-2xs font-bold border border-slate-200"
+                      : "text-slate-600 hover:text-slate-900 font-medium"
+                  }`}
+                  title={role.label}
+                >
+                  <Icon className={`w-3.5 h-3.5 mb-0.5 shrink-0 ${isSelected ? "text-[#0B3D91]" : "text-slate-500"}`} />
+                  <span className="text-xs leading-none truncate max-w-full">
+                    {role.shortLabel}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Form for Faculty, HOD, and Dean */}
+          {isStaffMode && (
+            <form onSubmit={handleStaffLogin} className="space-y-3.5 pt-1">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                  Official Email Address
+                </label>
+                <div className="relative">
+                  <BookOpen className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  <input
+                    type="email"
+                    required
+                    value={email}
+                    onChange={(e) => {
+                      setEmail(e.target.value);
+                      if (errorMsg) setErrorMsg("");
+                    }}
+                    placeholder={allowedDomain ? `name@${allowedDomain}` : "name@college.ac.in"}
+                    autoComplete="email"
+                    className="w-full bg-white border border-slate-300 rounded-xl pl-10 pr-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#0B3D91]/30 focus:border-[#0B3D91] transition-all"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block text-sm font-medium text-slate-700">
+                    Password
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setShowPass(!showPass)}
+                    className="text-sm text-[#0B3D91] hover:underline font-medium cursor-pointer border-0 bg-transparent"
+                  >
+                    {showPass ? "Hide" : "Show"}
+                  </button>
+                </div>
+                <div className="relative">
+                  <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  <input
+                    type={showPass ? "text" : "password"}
+                    required
+                    value={password}
+                    onChange={(e) => {
+                      setPassword(e.target.value);
+                      if (errorMsg) setErrorMsg("");
+                    }}
+                    placeholder="Enter password"
+                    autoComplete="current-password"
+                    className="w-full bg-white border border-slate-300 rounded-xl pl-10 pr-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#0B3D91]/30 focus:border-[#0B3D91] transition-all"
+                  />
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={loadingState || !email || !password}
+                className="w-full mt-2 py-2.5 px-4 rounded-xl bg-[#0B3D91] hover:bg-[#082d6c] text-white text-sm font-semibold shadow-xs flex items-center justify-center gap-2 transition-all disabled:opacity-50 cursor-pointer border-0 active:scale-[0.99]"
+              >
+                {loadingState ? (
+                  <>
+                    <RefreshCw size={14} className="animate-spin" />
+                    <span>Signing In...</span>
+                  </>
+                ) : (
+                  <>
+                    <span>Continue as {currentStaffRole?.shortLabel}</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </>
+                )}
+              </button>
+            </form>
+          )}
+
+          {/* Form for Administrator */}
+          {isAdminMode && (
+            <form onSubmit={handleAdminLogin} className="space-y-3.5 pt-1">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                  Administrator Username / Email
+                </label>
+                <div className="relative">
+                  <Shield className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  <input
+                    type="text"
+                    required
+                    value={email}
+                    onChange={(e) => {
+                      setEmail(e.target.value);
+                      if (errorMsg) setErrorMsg("");
+                    }}
+                    placeholder="admin@college.ac.in"
+                    autoComplete="username"
+                    className="w-full bg-white border border-slate-300 rounded-xl pl-10 pr-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#0B3D91]/30 focus:border-[#0B3D91] transition-all"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block text-sm font-medium text-slate-700">
+                    Password
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setShowPass(!showPass)}
+                    className="text-sm text-[#0B3D91] hover:underline font-medium cursor-pointer border-0 bg-transparent"
+                  >
+                    {showPass ? "Hide" : "Show"}
+                  </button>
+                </div>
+                <div className="relative">
+                  <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  <input
+                    type={showPass ? "text" : "password"}
+                    required
+                    value={password}
+                    onChange={(e) => {
+                      setPassword(e.target.value);
+                      if (errorMsg) setErrorMsg("");
+                    }}
+                    placeholder="••••••••••••"
+                    autoComplete="current-password"
+                    className="w-full bg-white border border-slate-300 rounded-xl pl-10 pr-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#0B3D91]/30 focus:border-[#0B3D91] transition-all"
+                  />
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={loadingState || !email || !password}
+                className="w-full mt-2 py-2.5 px-4 rounded-xl bg-[#0B3D91] hover:bg-[#082d6c] text-white text-sm font-semibold shadow-xs flex items-center justify-center gap-2 transition-all disabled:opacity-50 cursor-pointer border-0 active:scale-[0.99]"
+              >
+                {loadingState ? (
+                  <>
+                    <RefreshCw size={14} className="animate-spin" />
+                    <span>Signing In...</span>
+                  </>
+                ) : (
+                  <>
+                    <ShieldCheck size={14} />
+                    <span>Continue to Admin Console</span>
+                  </>
+                )}
+              </button>
+            </form>
           )}
         </div>
       )}
-
-      {/* ============================================================
-          FACULTY / HOD / DEAN — Staff Login
-      ============================================================ */}
-      {isStaffMode && (
-        <div className="space-y-4">
-          <form onSubmit={handleStaffLogin} className="space-y-4">
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                Official Email Address
-              </label>
-              <input
-                type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder={`name@${allowedDomain}`}
-                autoComplete="email"
-                className="w-full bg-white border border-slate-300 rounded-lg px-3.5 py-2.5 text-xs sm:text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#0B3D91] focus:border-transparent transition-all"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1.5">Password</label>
-              <div className="relative">
-                <input
-                  type={showPass ? "text" : "password"}
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••••••"
-                  autoComplete="current-password"
-                  className="w-full bg-white border border-slate-300 rounded-lg px-3.5 py-2.5 pr-10 text-xs sm:text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#0B3D91] focus:border-transparent transition-all"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPass(!showPass)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 transition-colors p-1 cursor-pointer border-0 bg-transparent"
-                >
-                  {showPass ? <EyeOff size={16} /> : <Eye size={16} />}
-                </button>
-              </div>
-            </div>
-
-            <button
-              type="submit"
-              disabled={loadingState}
-              className="w-full py-2.5 sm:py-3 rounded-lg bg-[#0B3D91] hover:bg-[#082d6c] text-white font-semibold text-xs sm:text-sm shadow-xs transition-all disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer border-0"
-            >
-              {loadingState ? (
-                <>
-                  <RefreshCw size={15} className="animate-spin" />
-                  <span>Authenticating...</span>
-                </>
-              ) : (
-                <>
-                  <Lock size={15} />
-                  <span>Sign In</span>
-                </>
-              )}
-            </button>
-          </form>
-
-          <p className="text-center text-[11px] text-slate-400 pt-1">
-            Sign in with your institutional email and password.
-            <br />
-            Google Sign-In is not available for staff accounts.
-          </p>
-        </div>
-      )}
-
-      {/* ============================================================
-          ADMIN — Manual username + password
-      ============================================================ */}
-      {isAdminMode && (
-        <form onSubmit={handleAdminLogin} className="space-y-4">
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-              Email Address / Institutional ID
-            </label>
-            <input
-              type="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder={`user@${allowedDomain}`}
-              autoComplete="email"
-              className="w-full bg-white border border-slate-300 rounded-lg px-3.5 py-2.5 text-xs sm:text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#0B3D91] focus:border-transparent transition-all"
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1.5">Password</label>
-            <div className="relative">
-              <input
-                type={showPass ? "text" : "password"}
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••••••"
-                autoComplete="current-password"
-                className="w-full bg-white border border-slate-300 rounded-lg px-3.5 py-2.5 pr-10 text-xs sm:text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#0B3D91] focus:border-transparent transition-all"
-              />
-              <button
-                type="button"
-                onClick={() => setShowPass(!showPass)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 transition-colors p-1 cursor-pointer border-0 bg-transparent"
-              >
-                {showPass ? <EyeOff size={16} /> : <Eye size={16} />}
-              </button>
-            </div>
-          </div>
-
-          <button
-            type="submit"
-            disabled={loadingState}
-            className="w-full py-2.5 sm:py-3 rounded-lg bg-[#0B3D91] hover:bg-[#082d6c] text-white font-semibold text-xs sm:text-sm shadow-xs transition-all disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer border-0"
-          >
-            {loadingState ? (
-              <>
-                <RefreshCw size={15} className="animate-spin" />
-                <span>Authenticating...</span>
-              </>
-            ) : (
-              <>
-                <Lock size={15} />
-                <span>Sign In Securely</span>
-              </>
-            )}
-          </button>
-        </form>
-      )}
-
-      {/* Security Badge */}
-      <div className="mt-6 pt-4 border-t border-slate-100 flex items-center justify-center gap-2 text-slate-400 text-[11px] text-center">
-        <ShieldCheck size={13} className="text-emerald-500 shrink-0" />
-        <span>256-bit encrypted &nbsp;·&nbsp; {sysName} Secure Portal</span>
-      </div>
     </AuthPageLayout>
   );
 };

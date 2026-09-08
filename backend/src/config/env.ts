@@ -66,8 +66,11 @@ export const env = {
   DEFAULT_ADMIN_PASSWORD_HASH: getEnv("DEFAULT_ADMIN_PASSWORD_HASH") || "",
 
   // Default Platform SuperAdmin Initialization
-  DEFAULT_PLATFORM_ADMIN_EMAIL: getEnv("DEFAULT_PLATFORM_ADMIN_EMAIL") || "platform.admin@facultyfeedback.in",
-  DEFAULT_PLATFORM_ADMIN_PASSWORD: getEnv("DEFAULT_PLATFORM_ADMIN_PASSWORD") || "PlatformAdmin2026!",
+  DEFAULT_PLATFORM_ADMIN_EMAIL: getEnv("DEFAULT_PLATFORM_ADMIN_EMAIL"),
+  DEFAULT_PLATFORM_ADMIN_PASSWORD: getEnv("DEFAULT_PLATFORM_ADMIN_PASSWORD"),
+
+  // Default Faculty / Staff Password
+  DEFAULT_FACULTY_PASSWORD: getEnv("DEFAULT_FACULTY_PASSWORD") || "Faculty@123",
 
   // Web3Forms API Key for platform email dispatch
   WEB3FORMS_ACCESS_KEY: getEnv("WEB3FORMS_ACCESS_KEY", "WEB3FORMS_KEY") || "",

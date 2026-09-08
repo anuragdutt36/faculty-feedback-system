@@ -279,6 +279,7 @@ export const AppRouter: React.FC = () => {
         <Route path="reports" element={<DeanHodReports />} />
         <Route path="notifications" element={<Notifications />} />
         <Route path="profile" element={<DeanHodProfile />} />
+        <Route path="settings" element={<DeanHodProfile />} />
         <Route path="help" element={<HelpFAQ />} />
       </Route>
 
@@ -300,6 +301,7 @@ export const AppRouter: React.FC = () => {
         <Route path="reports" element={<DeanHodReports />} />
         <Route path="notifications" element={<Notifications />} />
         <Route path="profile" element={<DeanHodProfile />} />
+        <Route path="settings" element={<DeanHodProfile />} />
         <Route path="help" element={<HelpFAQ />} />
       </Route>
 
@@ -318,6 +320,7 @@ export const AppRouter: React.FC = () => {
         <Route path="my-feedback" element={<MyFeedback />} />
         <Route path="reports" element={<MyFeedback />} />
         <Route path="profile" element={<FacultyProfile />} />
+        <Route path="settings" element={<FacultyProfile />} />
         <Route path="notifications" element={<Notifications />} />
         <Route path="help" element={<HelpFAQ />} />
       </Route>

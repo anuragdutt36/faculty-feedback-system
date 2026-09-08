@@ -2,11 +2,14 @@ import { Request, Response, NextFunction } from "express";
 import { Institution, IInstitution } from "../models/institution.model.js";
 import { CustomError } from "./errorHandler.js";
 
+import mongoose from "mongoose";
+
 // Extend Express Request interface to include tenant institution context
 declare global {
   namespace Express {
     interface Request {
       institution?: IInstitution;
+      institutionId?: any;
       user?: any;
     }
   }
@@ -19,7 +22,7 @@ export class TenantResolver {
     const headerSlug = req.headers["x-institution-slug"] as string;
     const headerId = req.headers["x-institution-id"] as string;
     if (headerSlug) return { slug: headerSlug.toLowerCase().trim() };
-    if (headerId) return { institutionId: headerId.toUpperCase().trim() };
+    if (headerId) return { institutionId: headerId.trim() };
 
     // 2. Check query params or route params if available
     const querySlug = req.query.institutionSlug as string;
@@ -59,7 +62,7 @@ export class TenantResolver {
     return {};
   }
 
-  // Middleware: Resolves tenant context and attaches req.institution
+  // Middleware: Resolves tenant context and attaches req.institution and req.institutionId
   static async resolveTenant(req: Request, res: Response, next: NextFunction) {
     try {
       const { slug, institutionId } = TenantResolver.extractTenantIdentifier(req);
@@ -67,9 +70,20 @@ export class TenantResolver {
       let institution: IInstitution | null = null;
 
       if (slug) {
-        institution = await Institution.findOne({ slug });
+        institution = await Institution.findOne({ slug: new RegExp(`^${slug}$`, "i") });
       } else if (institutionId) {
-        institution = await Institution.findOne({ institutionId });
+        if (mongoose.Types.ObjectId.isValid(institutionId)) {
+          institution = await Institution.findById(institutionId);
+        }
+        if (!institution) {
+          institution = await Institution.findOne({
+            $or: [
+              { institutionId: institutionId.toUpperCase() },
+              { institutionId: institutionId },
+              { slug: institutionId.toLowerCase() },
+            ],
+          });
+        }
       } else if (req.user?.institutionId) {
         // From authenticated JWT user session
         institution = await Institution.findById(req.user.institutionId);
@@ -86,6 +100,7 @@ export class TenantResolver {
           });
         }
         req.institution = institution;
+        req.institutionId = institution._id;
       }
 
       next();

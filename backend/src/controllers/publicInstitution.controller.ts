@@ -66,6 +66,7 @@ export class PublicInstitutionController {
 
       return res.status(200).json(
         ApiResponse.success("Public institution portal details", {
+          id: institution._id.toString(),
           institutionId: institution.institutionId,
           name: institution.name,
           slug: institution.slug,

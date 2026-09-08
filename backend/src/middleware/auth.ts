@@ -40,6 +40,9 @@ export const authenticate = (
       role: decoded.role as UserRole,
       institutionId: decoded.institutionId,
     };
+    if (decoded.institutionId && !req.institutionId) {
+      req.institutionId = decoded.institutionId;
+    }
     next();
   } catch (error: any) {
     return res
