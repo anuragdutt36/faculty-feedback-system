@@ -272,7 +272,7 @@ export const LandingPage: React.FC = () => {
       {/* Main Content */}
       <main className="flex-1 flex flex-col items-center w-full">
         {/* HERO SECTION WITH DYNAMIC CAMPUS ATMOSPHERE SLIDESHOW */}
-        <section id="home" className="w-full relative overflow-hidden bg-slate-900 text-white min-h-[calc(100vh-65px)] py-16 sm:py-24 flex items-center justify-center">
+        <section id="home" className="w-full relative overflow-hidden bg-slate-900 text-white min-h-[calc(100vh-65px)] py-16 sm:py-24 flex items-center justify-center scroll-mt-16">
           {/* Stable Layered Atmosphere Slideshow Background (1–3 images, ~15-22% opacity effect, ~6-12px blur, 1.8s opacity crossfade) */}
           {imagesToRender.length > 0 && (
             <div className="absolute inset-0 pointer-events-none overflow-hidden select-none z-0">
@@ -367,7 +367,7 @@ export const LandingPage: React.FC = () => {
         </section>
 
         {/* DYNAMIC ACTIVE SESSION STATUS / FEEDBACK WINDOW SECTION */}
-        <section id="notice" className="w-full max-w-[1240px] mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16 border-b border-slate-100">
+        <section id="notice" className="w-full max-w-[1240px] mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16 scroll-mt-16 sm:scroll-mt-20 border-b border-slate-100">
           <div className="max-w-4xl mx-auto bg-white border border-slate-200 rounded-2xl p-6 sm:p-8 shadow-xs flex flex-col md:flex-row items-center justify-between gap-6">
             <div className="flex items-start gap-4">
               <div className="w-12 h-12 rounded-xl bg-blue-50 text-[#0B3D91] border border-blue-100 flex items-center justify-center shrink-0 mt-1">
@@ -417,7 +417,7 @@ export const LandingPage: React.FC = () => {
         </section>
 
         {/* HOW IT WORKS SECTION */}
-        <section id="workflow" className="w-full max-w-[1240px] mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16 border-b border-slate-100">
+        <section id="workflow" className="w-full max-w-[1240px] mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16 scroll-mt-16 sm:scroll-mt-20 border-b border-slate-100">
           <div className="text-center max-w-2xl mx-auto mb-10">
             <h2
               className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight leading-tight mb-2"
@@ -467,7 +467,7 @@ export const LandingPage: React.FC = () => {
         </section>
 
         {/* FAQ ACCORDION */}
-        <section id="faq" className="w-full max-w-[1240px] mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16 text-left">
+        <section id="faq" className="w-full max-w-[1240px] mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16 scroll-mt-16 sm:scroll-mt-20 text-left">
           <div className="text-center max-w-2xl mx-auto mb-10">
             <h2
               className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight leading-tight mb-2"
