@@ -26,11 +26,11 @@ export const Settings: React.FC = () => {
 
   // Simplified settings state matching revised Mongoose schema
   const [settings, setSettings] = useState<any>({
-    systemName: "KNIT",
-    instituteName: "Kamla Nehru Institute of Technology",
+    systemName: "Faculty Feedback",
+    instituteName: "Institution",
     academicYear: "2026-27",
     googleLoginEnabled: true,
-    domainRestriction: "@knit.ac.in",
+    domainRestriction: "",
     sessionTimeout: 30,
     anonymousFeedback: true,
     oneSubmissionPerStudent: true,
@@ -54,12 +54,7 @@ export const Settings: React.FC = () => {
       const res = await settingsService.getSettings();
       if (res?.success && res.data) {
         setSettings(res.data);
-        localStorage.setItem("systemName", res.data.systemName);
-        localStorage.setItem("instituteName", res.data.instituteName);
-        localStorage.setItem("academicYear", res.data.academicYear);
-        localStorage.setItem("logoUrl", res.data.logoUrl || "");
-        localStorage.setItem("themeMode", res.data.themeMode || "dark");
-        document.title = `${res.data.systemName} Faculty Feedback System`;
+        document.title = `${res.data.systemName || "Faculty Feedback"} System`;
       }
     } catch (err: any) {
       console.error("Failed to load settings", err);
@@ -76,12 +71,7 @@ export const Settings: React.FC = () => {
       const res = await settingsService.updateSettings(settings);
       if (res?.success) {
         showNotification("success", "System settings updated and saved successfully!");
-        localStorage.setItem("systemName", settings.systemName);
-        localStorage.setItem("instituteName", settings.instituteName);
-        localStorage.setItem("academicYear", settings.academicYear);
-        localStorage.setItem("logoUrl", settings.logoUrl || "");
-        localStorage.setItem("themeMode", settings.themeMode || "dark");
-        document.title = `${settings.systemName} Faculty Feedback System`;
+        document.title = `${settings.systemName || "Faculty Feedback"} System`;
         window.dispatchEvent(new Event("storage"));
       }
     } catch (err: any) {
@@ -125,7 +115,6 @@ export const Settings: React.FC = () => {
       const res = await settingsService.uploadLogo(file);
       if (res?.success && res.data) {
         setSettings({ ...settings, logoUrl: res.data.logoUrl });
-        localStorage.setItem("logoUrl", res.data.logoUrl);
         window.dispatchEvent(new Event("storage"));
         showNotification("success", "Logo uploaded successfully!");
       }
@@ -133,6 +122,7 @@ export const Settings: React.FC = () => {
       showNotification("error", err.message || "Failed to upload logo.");
     } finally {
       setLoading(false);
+      e.target.value = "";
     }
   };
 
@@ -143,12 +133,45 @@ export const Settings: React.FC = () => {
       const res = await settingsService.deleteLogo();
       if (res?.success) {
         setSettings({ ...settings, logoUrl: "" });
-        localStorage.setItem("logoUrl", "");
         window.dispatchEvent(new Event("storage"));
         showNotification("success", "Logo deleted successfully!");
       }
     } catch (err: any) {
       showNotification("error", err.message || "Failed to delete logo.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCampusImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, slotIndex: number) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setLoading(true);
+    try {
+      const res = await settingsService.uploadCampusImage(file, slotIndex);
+      if (res?.success && res.data) {
+        setSettings(res.data);
+        showNotification("success", `Campus image ${slotIndex + 1} uploaded successfully!`);
+      }
+    } catch (err: any) {
+      showNotification("error", err.message || "Failed to upload campus image.");
+    } finally {
+      setLoading(false);
+      e.target.value = "";
+    }
+  };
+
+  const handleCampusImageDelete = async (slotIndex: number) => {
+    if (!window.confirm(`Are you sure you want to delete campus image ${slotIndex + 1}?`)) return;
+    setLoading(true);
+    try {
+      const res = await settingsService.deleteCampusImage(slotIndex);
+      if (res?.success && res.data) {
+        setSettings(res.data);
+        showNotification("success", `Campus image ${slotIndex + 1} deleted successfully!`);
+      }
+    } catch (err: any) {
+      showNotification("error", err.message || "Failed to delete campus image.");
     } finally {
       setLoading(false);
     }
@@ -460,7 +483,7 @@ export const Settings: React.FC = () => {
                     <div className="flex gap-2">
                       <label className="px-3 py-1.5 rounded-lg bg-[#0B3D91] text-white text-xs font-semibold hover:bg-[#0a348a] cursor-pointer">
                         Replace Logo
-                        <input type="file" accept=".png,.jpg,.jpeg,.svg" onChange={handleLogoUpload} className="hidden" />
+                        <input type="file" accept="image/*" onChange={handleLogoUpload} className="hidden" />
                       </label>
                       <button type="button" onClick={handleLogoDelete} className="px-3 py-1.5 rounded-lg bg-red-600 text-white text-xs font-semibold hover:bg-red-700 cursor-pointer border-0">
                         Delete Logo
@@ -473,9 +496,58 @@ export const Settings: React.FC = () => {
                       <Upload size={20} className={cn("mx-auto mb-1", textSub)} />
                       <p className={cn("text-xs", textSub)}>Upload Logo (PNG / SVG)</p>
                     </div>
-                    <input type="file" accept=".png,.jpg,.jpeg,.svg" onChange={handleLogoUpload} className="hidden" />
+                    <input type="file" accept="image/*" onChange={handleLogoUpload} className="hidden" />
                   </label>
                 )}
+              </div>
+
+              <div className="pt-4 border-t border-slate-200 dark:border-white/10">
+                <label className={cn("block text-xs font-semibold mb-1.5", textSub)}>
+                  College Campus Images (Upload 1–3 Images)
+                </label>
+                <p className={cn("text-[11px] mb-3 leading-relaxed", textSub)}>
+                  Upload between 1 and 3 photos representing your institution's campus, buildings, or environment. These images will render dynamically as a subtle, soft-focused hero background on your college landing page.
+                </p>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  {[0, 1, 2].map((slotIdx) => {
+                    const imgItem = settings.campusImages && settings.campusImages[slotIdx];
+                    return (
+                      <div key={slotIdx} className={cn("p-3 rounded-2xl border flex flex-col justify-between items-center text-center relative", dark ? "border-white/10 bg-white/5" : "border-slate-200 bg-slate-50")}>
+                        <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">
+                          Slot {slotIdx + 1} {slotIdx === 0 ? "(Primary)" : ""}
+                        </div>
+
+                        {imgItem?.url ? (
+                          <div className="w-full space-y-2">
+                            <div className="h-28 w-full rounded-xl overflow-hidden relative border border-slate-200">
+                              <img src={getFormattedLogoUrl(imgItem.url)} alt={`Campus slot ${slotIdx + 1}`} className="w-full h-full object-cover" />
+                            </div>
+                            <div className="flex gap-1.5 justify-center">
+                              <label className="px-2.5 py-1 rounded-lg bg-[#0B3D91] text-white text-[11px] font-semibold hover:bg-[#0a348a] cursor-pointer">
+                                Replace
+                                <input type="file" accept="image/*" onChange={(e) => handleCampusImageUpload(e, slotIdx)} className="hidden" />
+                              </label>
+                              <button
+                                type="button"
+                                onClick={() => handleCampusImageDelete(slotIdx)}
+                                className="px-2.5 py-1 rounded-lg bg-red-600 text-white text-[11px] font-semibold hover:bg-red-700 cursor-pointer border-0"
+                              >
+                                Delete
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <label className={cn("flex flex-col items-center justify-center h-28 w-full rounded-xl border-2 border-dashed cursor-pointer hover:opacity-80 transition-all", dark ? "border-white/20 bg-white/5" : "border-[#0B3D91]/20 bg-white")}>
+                            <Upload size={18} className={cn("mb-1", textSub)} />
+                            <span className={cn("text-[11px] font-medium", textSub)}>Upload Image {slotIdx + 1}</span>
+                            <input type="file" accept="image/*" onChange={(e) => handleCampusImageUpload(e, slotIdx)} className="hidden" />
+                          </label>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             </div>
           )}

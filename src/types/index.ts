@@ -1,10 +1,15 @@
 export type Page = "landing" | "login" | "admin-dashboard" | "student-dashboard" | "feedback-form" | "feedback-history";
-export type Role = "student" | "admin" | "hod" | "faculty";
+export type Role = "student" | "admin" | "hod" | "faculty" | "dean";
 
 export interface User {
   id: string;
   username: string;
   role: Role;
+  name?: string;
+  department?: string;
+  employeeId?: string;
+  enrollmentNo?: string;
+  institutionId?: string;
 }
 export interface ActiveSession {
   id: number;

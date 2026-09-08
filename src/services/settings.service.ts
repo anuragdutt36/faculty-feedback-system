@@ -46,6 +46,24 @@ export const settingsService = {
     });
   },
 
+  uploadCampusImage: async (file: File, slotIndex?: number) => {
+    const formData = new FormData();
+    formData.append("image", file);
+    if (slotIndex !== undefined) {
+      formData.append("slotIndex", slotIndex.toString());
+    }
+    return await apiFetch("/settings/campus-image", {
+      method: "POST",
+      body: formData,
+    });
+  },
+
+  deleteCampusImage: async (slotIndex: number) => {
+    return await apiFetch(`/settings/campus-image/${slotIndex}`, {
+      method: "DELETE",
+    });
+  },
+
   // Roll Mappings
   getRollMappings: async () => {
     return await apiFetch("/roll-mappings");

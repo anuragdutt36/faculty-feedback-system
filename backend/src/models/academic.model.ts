@@ -2,6 +2,7 @@ import mongoose, { Schema, Document } from "mongoose";
 
 // Course
 export interface ICourse extends Document {
+  institutionId?: mongoose.Types.ObjectId; // References Institution
   name: string;
   duration: number; // in years
   status: "active" | "inactive";
@@ -11,7 +12,8 @@ export interface ICourse extends Document {
 
 const CourseSchema = new Schema<ICourse>(
   {
-    name: { type: String, required: true, unique: true, trim: true },
+    institutionId: { type: Schema.Types.ObjectId, ref: "Institution", index: true },
+    name: { type: String, required: true, trim: true },
     duration: { type: Number, required: true },
     status: { type: String, enum: ["active", "inactive"], default: "active" },
   },
@@ -22,6 +24,7 @@ export const Course = mongoose.model<ICourse>("Course", CourseSchema);
 
 // Branch / Department
 export interface IBranch extends Document {
+  institutionId?: mongoose.Types.ObjectId; // References Institution
   code: string; // e.g. CS, MCA, EC
   name: string;
   courseId: mongoose.Types.ObjectId;
@@ -33,6 +36,7 @@ export interface IBranch extends Document {
 
 const BranchSchema = new Schema<IBranch>(
   {
+    institutionId: { type: Schema.Types.ObjectId, ref: "Institution", index: true },
     code: { type: String, required: true, uppercase: true, trim: true },
     name: { type: String, required: true, trim: true },
     courseId: { type: Schema.Types.ObjectId, ref: "Course", required: true },
@@ -42,13 +46,14 @@ const BranchSchema = new Schema<IBranch>(
   { timestamps: true }
 );
 
-// Compound index to prevent duplicate branch codes under the same course
-BranchSchema.index({ code: 1, courseId: 1 }, { unique: true });
+// Compound index to prevent duplicate branch codes under the same course per institution
+BranchSchema.index({ code: 1, courseId: 1, institutionId: 1 });
 
 export const Branch = mongoose.model<IBranch>("Branch", BranchSchema);
 
 // Subject
 export interface ISubject extends Document {
+  institutionId?: mongoose.Types.ObjectId; // References Institution
   code: string; // unique code, e.g. MCA-301
   name: string;
   courseId: mongoose.Types.ObjectId;
@@ -62,7 +67,8 @@ export interface ISubject extends Document {
 
 const SubjectSchema = new Schema<ISubject>(
   {
-    code: { type: String, required: true, unique: true, uppercase: true, trim: true, index: true },
+    institutionId: { type: Schema.Types.ObjectId, ref: "Institution", index: true },
+    code: { type: String, required: true, uppercase: true, trim: true, index: true },
     name: { type: String, required: true, trim: true },
     courseId: { type: Schema.Types.ObjectId, ref: "Course", required: true },
     branchId: { type: Schema.Types.ObjectId, ref: "Branch", required: true },
@@ -77,6 +83,7 @@ export const Subject = mongoose.model<ISubject>("Subject", SubjectSchema);
 
 // Year
 export interface IYear extends Document {
+  institutionId?: mongoose.Types.ObjectId; // References Institution
   name: string; // e.g. "1st Year", "2nd Year", "3rd Year", "4th Year"
   status: "active" | "inactive";
   createdAt: Date;
@@ -85,7 +92,8 @@ export interface IYear extends Document {
 
 const YearSchema = new Schema<IYear>(
   {
-    name: { type: String, required: true, unique: true, trim: true },
+    institutionId: { type: Schema.Types.ObjectId, ref: "Institution", index: true },
+    name: { type: String, required: true, trim: true },
     status: { type: String, enum: ["active", "inactive"], default: "active" },
   },
   { timestamps: true }
@@ -95,6 +103,7 @@ export const Year = mongoose.model<IYear>("Year", YearSchema);
 
 // Semester
 export interface ISemester extends Document {
+  institutionId?: mongoose.Types.ObjectId; // References Institution
   name: string; // e.g. "Sem 1", "Sem 2"
   number: number; // e.g. 1, 2
   status: "active" | "inactive";
@@ -104,8 +113,9 @@ export interface ISemester extends Document {
 
 const SemesterSchema = new Schema<ISemester>(
   {
+    institutionId: { type: Schema.Types.ObjectId, ref: "Institution", index: true },
     name: { type: String, required: true, trim: true },
-    number: { type: Number, required: true, unique: true },
+    number: { type: Number, required: true },
     status: { type: String, enum: ["active", "inactive"], default: "active" },
   },
   { timestamps: true }

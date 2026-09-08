@@ -4,7 +4,6 @@ import {
   GraduationCap, Activity, ClipboardList, CheckCircle2, Calendar, ArrowRight,
   Building2, Clock, MessageSquare, Lock, Sparkles, BarChart2, ShieldCheck, Loader2
 } from "lucide-react";
-import { motion } from "framer-motion";
 import { useAuth } from "../../context/AuthContext.js";
 import { useTheme } from "../../context/ThemeContext.js";
 import { Badge } from "../../components/common/Badge.js";
@@ -117,28 +116,10 @@ export const StudentDashboard: React.FC = () => {
     );
   }
 
-  const staggerContainer = {
-    hidden: { opacity: 0 },
-    show: {
-      opacity: 1,
-      transition: { staggerChildren: 0.1, delayChildren: 0.1 }
-    }
-  };
-  const fadeUp = {
-    hidden: { opacity: 0, y: 20 },
-    show: { opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" } }
-  };
-
   return (
-    <motion.div 
-      variants={staggerContainer}
-      initial="hidden"
-      animate="show"
-      className="space-y-4 sm:space-y-6 w-full max-w-full overflow-x-hidden"
-    >
+    <div className="space-y-4 sm:space-y-6 w-full max-w-full overflow-x-hidden">
       {/* Welcome */}
-      <motion.div
-        variants={fadeUp}
+      <div
         className={`rounded-2xl p-4 sm:p-6 border shadow-sm ${
           dark ? "border-white/10 bg-white/5" : "border-[#0B3D91]/8 bg-white"
         }`}
@@ -188,7 +169,7 @@ export const StudentDashboard: React.FC = () => {
           </div>
           <div className={`h-2 sm:h-2.5 rounded-full overflow-hidden ${dark ? "bg-white/10" : "bg-[#EEF2F8]"}`}>
             <div
-              className="h-full rounded-full bg-gradient-to-r from-[#0B3D91] to-[#3B82F6] transition-all"
+              className="h-full rounded-full bg-gradient-to-r from-[#0B3D91] to-[#3B82F6]"
               style={{ width: `${progress}%` }}
             />
           </div>
@@ -197,15 +178,15 @@ export const StudentDashboard: React.FC = () => {
             <span>{progress}% complete</span>
           </div>
         </div>
-      </motion.div>
+      </div>
 
       {/* Privacy Banner */}
-      <motion.div variants={fadeUp}>
+      <div>
         <PrivacyBanner />
-      </motion.div>
+      </div>
 
       {/* Metric cards (2-column on mobile, 4-column on desktop) */}
-      <motion.div variants={fadeUp} className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
         {[
           { label: "Active Sessions", value: String(activeSessions.length), sub: "Active Feedback Campaigns", icon: Activity, color: "bg-[#0B3D91]" },
           { label: "Pending Feedback", value: String(pending), sub: `${pending} subjects remaining`, icon: ClipboardList, color: "bg-amber-500" },
@@ -214,7 +195,7 @@ export const StudentDashboard: React.FC = () => {
         ].map(({ label, value, sub, icon: Icon, color }) => (
           <div
             key={label}
-            className={`rounded-2xl p-4 sm:p-5 border shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all cursor-default w-full ${cardBg}`}
+            className={`rounded-2xl p-4 sm:p-5 border shadow-sm cursor-default w-full ${cardBg}`}
           >
             <div className={`w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center mb-3 sm:mb-4 ${color}`}>
               <Icon size={16} className="text-white sm:w-[18px] sm:h-[18px]" />
@@ -224,7 +205,7 @@ export const StudentDashboard: React.FC = () => {
             <div className="text-[10px] text-[#5A6E8E] mt-0.5 truncate" title={sub}>{sub}</div>
           </div>
         ))}
-      </motion.div>
+      </div>
 
       {/* Active sessions */}
       <div>
@@ -246,14 +227,14 @@ export const StudentDashboard: React.FC = () => {
             subjectsList.map((s: any) => (
               <div
                 key={s.mappingId}
-                className={`rounded-2xl p-4 sm:p-5 border transition-all shadow-sm w-full ${
+                className={`rounded-2xl p-4 sm:p-5 border shadow-sm w-full ${
                   s.submitted
                     ? dark
                       ? "bg-white/4 border-white/8 opacity-80"
                       : "bg-[#F8FAFD] border-[#0B3D91]/8"
                     : dark
-                      ? "bg-white/5 border-white/10 hover:shadow-md hover:-translate-y-0.5"
-                      : "bg-white border-[#0B3D91]/12 hover:shadow-md hover:-translate-y-0.5"
+                      ? "bg-white/5 border-white/10"
+                      : "bg-white border-[#0B3D91]/12"
                 }`}
               >
                 <div className="flex items-start justify-between gap-2 mb-3">
@@ -282,7 +263,7 @@ export const StudentDashboard: React.FC = () => {
                 ) : (
                   <button
                     onClick={() => navigate(`/feedback-form?session=${s.sessionId}&subject=${s.subjectId}&faculty=${s.facultyId}&mapping=${s.mappingId}`)}
-                    className="w-full py-2.5 rounded-xl bg-[#0B3D91] text-white text-xs font-semibold hover:bg-[#0a348a] transition-all shadow-md shadow-[#0B3D91]/20 flex items-center justify-center gap-2 cursor-pointer border-0"
+                    className="w-full py-2.5 rounded-xl bg-[#0B3D91] text-white text-xs font-semibold hover:bg-[#0a348a] transition-colors shadow-md shadow-[#0B3D91]/20 flex items-center justify-center gap-2 cursor-pointer border-0"
                   >
                     <MessageSquare size={13} /> Start Feedback
                   </button>
@@ -334,7 +315,7 @@ export const StudentDashboard: React.FC = () => {
           ))}
         </div>
       </div>
-    </motion.div>
+    </div>
   );
 };
 

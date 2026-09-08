@@ -2,14 +2,17 @@ import mongoose, { Schema, Document } from "mongoose";
 
 // Faculty Profile
 export interface IFacultyProfile extends Document {
-  userId: mongoose.Types.ObjectId; // References User
+  userId?: mongoose.Types.ObjectId; // References User
+  institutionId?: mongoose.Types.ObjectId; // References Institution
   employeeId: string; // unique employee identifier
   name: string;
   email: string;
   phone?: string;
   department: string;
   designation: string;
-  branchId: mongoose.Types.ObjectId; // Department/Branch assigned to
+  role: "faculty" | "hod" | "dean";
+  academicScope?: string; // e.g. "All Departments" for Dean, or department name for HOD
+  branchId?: mongoose.Types.ObjectId; // Department/Branch assigned to
   status: "active" | "inactive";
   createdAt: Date;
   updatedAt: Date;
@@ -17,13 +20,16 @@ export interface IFacultyProfile extends Document {
 
 const FacultyProfileSchema = new Schema<IFacultyProfile>(
   {
-    userId: { type: Schema.Types.ObjectId, ref: "User", required: true },
-    employeeId: { type: String, required: true, unique: true, uppercase: true, trim: true, index: true },
+    userId: { type: Schema.Types.ObjectId, ref: "User", required: false },
+    institutionId: { type: Schema.Types.ObjectId, ref: "Institution", index: true },
+    employeeId: { type: String, required: true, uppercase: true, trim: true, index: true },
     name: { type: String, required: true, trim: true },
-    email: { type: String, required: true, unique: true, lowercase: true, trim: true },
+    email: { type: String, required: true, lowercase: true, trim: true, index: true },
     phone: { type: String, required: false, trim: true },
     designation: { type: String, required: true, trim: true },
     department: { type: String, required: false, default: "General", trim: true },
+    role: { type: String, enum: ["faculty", "hod", "dean"], default: "faculty", index: true },
+    academicScope: { type: String, default: "Department Scope", trim: true },
     branchId: { type: Schema.Types.ObjectId, ref: "Branch", required: false },
     status: { type: String, enum: ["active", "inactive"], default: "active" },
   },
@@ -34,6 +40,7 @@ export const FacultyProfile = mongoose.model<IFacultyProfile>("FacultyProfile", 
 
 export interface IStudentProfile extends Document {
   userId?: mongoose.Types.ObjectId; // References User, optional since user might only be created on first login
+  institutionId?: mongoose.Types.ObjectId; // References Institution
   enrollmentNo: string; // unique student enrollment ID / Roll Number
   name: string;
   email: string; // College Email for Google OAuth
@@ -44,7 +51,6 @@ export interface IStudentProfile extends Document {
   academicSession: string;
   googleId?: string; // unique Google ID
   status: "active" | "inactive";
-  // section field removed
   createdAt: Date;
   updatedAt: Date;
 }
@@ -52,9 +58,10 @@ export interface IStudentProfile extends Document {
 const StudentProfileSchema = new Schema<IStudentProfile>(
   {
     userId: { type: Schema.Types.ObjectId, ref: "User" }, // optional initially, linked on first login
-    enrollmentNo: { type: String, required: true, unique: true, uppercase: true, trim: true, index: true },
+    institutionId: { type: Schema.Types.ObjectId, ref: "Institution", index: true },
+    enrollmentNo: { type: String, required: true, uppercase: true, trim: true, index: true },
     name: { type: String, required: true, trim: true },
-    email: { type: String, required: true, unique: true, lowercase: true, trim: true, index: true },
+    email: { type: String, required: true, lowercase: true, trim: true, index: true },
     courseId: { type: Schema.Types.ObjectId, ref: "Course", required: true },
     branchId: { type: Schema.Types.ObjectId, ref: "Branch", required: true },
     year: { type: Number, required: true },

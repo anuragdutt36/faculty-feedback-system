@@ -1,6 +1,7 @@
 import mongoose, { Schema, Document } from "mongoose";
 
 export interface IRollMapping extends Document {
+  institutionId?: mongoose.Types.ObjectId; // References Institution
   startRoll: string;
   endRoll: string;
   courseId: mongoose.Types.ObjectId;
@@ -15,6 +16,7 @@ export interface IRollMapping extends Document {
 
 const RollMappingSchema = new Schema<IRollMapping>(
   {
+    institutionId: { type: Schema.Types.ObjectId, ref: "Institution", index: true },
     startRoll: { type: String, required: true },
     endRoll: { type: String, required: true },
     courseId: { type: Schema.Types.ObjectId, ref: "Course", required: true },

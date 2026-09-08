@@ -7,7 +7,8 @@ import { logAudit } from "../utils/auditLogger.js";
 export class SessionsController {
   static async getSessions(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
-      const sessions = await SessionsService.getAllSessions();
+      const institutionId = req.user?.institutionId || req.institutionId;
+      const sessions = await SessionsService.getAllSessions(institutionId ? institutionId.toString() : undefined);
       return res.status(200).json(ApiResponse.success("Sessions fetched", sessions));
     } catch (error) {
       next(error);
@@ -16,13 +17,18 @@ export class SessionsController {
 
   static async createSession(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
-      const session = await SessionsService.createSession(req.body);
+      const institutionId = req.user?.institutionId || req.institutionId;
+      const session = await SessionsService.createSession({
+        ...req.body,
+        institutionId: (req.body.institutionId || institutionId) ? (req.body.institutionId || institutionId).toString() : undefined,
+      });
 
       await logAudit({
         userId: req.user?.id,
         action: "SESSION_CREATE",
         details: `Created feedback session: ${req.body.name}`,
         ipAddress: req.ip,
+        institutionId: institutionId ? (institutionId as any) : undefined,
       });
 
       return res.status(201).json(ApiResponse.success("Session created successfully", session));
@@ -34,13 +40,15 @@ export class SessionsController {
   static async updateSession(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
       const { id } = req.params;
-      const session = await SessionsService.updateSession(id, req.body);
+      const institutionId = req.user?.institutionId || req.institutionId;
+      const session = await SessionsService.updateSession(id, req.body, institutionId ? institutionId.toString() : undefined);
 
       await logAudit({
         userId: req.user?.id,
         action: "SESSION_UPDATE",
         details: `Updated session ID: ${id}`,
         ipAddress: req.ip,
+        institutionId: institutionId ? (institutionId as any) : undefined,
       });
 
       return res.status(200).json(ApiResponse.success("Session updated successfully", session));
@@ -52,13 +60,15 @@ export class SessionsController {
   static async activateSession(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
       const { id } = req.params;
-      const session = await SessionsService.activateSession(id);
+      const institutionId = req.user?.institutionId || req.institutionId;
+      const session = await SessionsService.activateSession(id, institutionId ? institutionId.toString() : undefined);
 
       await logAudit({
         userId: req.user?.id,
         action: "SESSION_ACTIVATE",
         details: `Activated feedback session ID: ${id}`,
         ipAddress: req.ip,
+        institutionId: institutionId ? (institutionId as any) : undefined,
       });
 
       return res.status(200).json(ApiResponse.success("Session activated successfully", session));
@@ -70,13 +80,15 @@ export class SessionsController {
   static async closeSession(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
       const { id } = req.params;
-      const session = await SessionsService.closeSession(id);
+      const institutionId = req.user?.institutionId || req.institutionId;
+      const session = await SessionsService.closeSession(id, institutionId ? institutionId.toString() : undefined);
 
       await logAudit({
         userId: req.user?.id,
         action: "SESSION_CLOSE",
         details: `Closed feedback session ID: ${id}`,
         ipAddress: req.ip,
+        institutionId: institutionId ? (institutionId as any) : undefined,
       });
 
       return res.status(200).json(ApiResponse.success("Session closed successfully", session));
@@ -88,13 +100,15 @@ export class SessionsController {
   static async deleteSession(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
       const { id } = req.params;
-      await SessionsService.deleteSession(id);
+      const institutionId = req.user?.institutionId || req.institutionId;
+      await SessionsService.deleteSession(id, institutionId ? institutionId.toString() : undefined);
 
       await logAudit({
         userId: req.user?.id,
         action: "SESSION_DELETE",
         details: `Deleted feedback session ID: ${id}`,
         ipAddress: req.ip,
+        institutionId: institutionId ? (institutionId as any) : undefined,
       });
 
       return res.status(200).json(ApiResponse.success("Session deleted successfully"));
@@ -110,12 +124,14 @@ export class SessionsController {
         return res.status(403).json(ApiResponse.error("Only students can access this route"));
       }
 
+      const institutionId = req.user.institutionId || req.institutionId;
+
       // Prevent browser caching so fresh session data is always returned
       res.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
       res.set("Pragma", "no-cache");
       res.set("Expires", "0");
 
-      const sessions = await SessionsService.getStudentActiveSessions(req.user.id);
+      const sessions = await SessionsService.getStudentActiveSessions(req.user.id, institutionId ? institutionId.toString() : undefined);
       if (sessions.length === 0) {
         return res.status(200).json(ApiResponse.success("No active feedback sessions were found for your current academic profile. Please check your course, branch, year, and semester details.", []));
       }
@@ -125,3 +141,4 @@ export class SessionsController {
     }
   }
 }
+export default SessionsController;

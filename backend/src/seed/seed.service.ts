@@ -7,11 +7,38 @@ import { Question, FeedbackSession, FeedbackResponse, SubmissionStatus, ActiveSu
 import { FacultySubjectMapping } from "../models/mapping.model.js";
 import { RollMapping } from "../models/rollMapping.model.js";
 import { SystemSettings } from "../models/settings.model.js";
+import { PlatformAdmin } from "../models/platformAdmin.model.js";
+import { Institution } from "../models/institution.model.js";
 import { logger } from "../utils/logger.js";
 import { env } from "../config/env.js";
 
 export class SeedService {
+  static async ensurePlatformAdmin() {
+    const platformAdminExists = await PlatformAdmin.findOne({ role: "superadmin" });
+    if (!platformAdminExists) {
+      const email = (env.DEFAULT_PLATFORM_ADMIN_EMAIL || "platform.admin@facultyfeedback.in").toLowerCase().trim();
+      const rawPass = env.DEFAULT_PLATFORM_ADMIN_PASSWORD || "PlatformAdmin2026!";
+      const salt = await bcrypt.genSalt(12);
+      const hash = await bcrypt.hash(rawPass, salt);
+
+      await PlatformAdmin.create({
+        username: email,
+        password: hash,
+        name: "Platform Super Administrator",
+        role: "superadmin",
+        status: "active",
+      });
+      logger.info(`[Seed] Initialized platform superadmin: ${email}`);
+    }
+  }
+
+  static async ensureDefaultInstitution() {
+    // No automatic sample colleges seeded.
+    // Colleges are added strictly when registered by an institution and approved by the platform admin.
+  }
+
   static async ensureAdminUser() {
+    await this.ensurePlatformAdmin();
     const adminExists = await User.findOne({ role: "admin" });
     if (!adminExists) {
       const adminEmail = (env.DEFAULT_ADMIN_EMAIL || "admin@knit.ac.in").toLowerCase().trim();
@@ -34,6 +61,7 @@ export class SeedService {
         logger.warn("[Seed] Warning: No DEFAULT_ADMIN_PASSWORD or DEFAULT_ADMIN_PASSWORD_HASH provided. Admin user was not created.");
       }
     }
+    await this.ensureDefaultInstitution();
   }
 
   static async clearDatabase() {
@@ -384,5 +412,31 @@ export class SeedService {
     });
 
     logger.info("Successfully seeded database with all KNIT sample master profiles.");
+  }
+
+  static async seedNewInstitutionData(institutionId: any, institutionName: string, domain: string) {
+    logger.info(`[Seed] Provisioning clean empty state with standard Question Bank for new tenant: ${institutionName} (${institutionId})`);
+
+    // Check if questions already exist for this institution
+    const existingQuestion = await Question.findOne({ institutionId });
+    if (existingQuestion) return;
+
+    // Seed standard Question Bank scoped to the new institution
+    const questionsList = [
+      { code: "Q01", text: "The faculty explains concepts clearly and at an appropriate pace.", category: "Teaching Effectiveness", weight: 1.0, order: 1 },
+      { code: "Q02", text: "The faculty demonstrates depth of knowledge and command over the subject.", category: "Subject Knowledge", weight: 1.0, order: 2 },
+      { code: "Q03", text: "The faculty communicates clearly and effectively in the class.", category: "Communication", weight: 1.0, order: 3 },
+      { code: "Q04", text: "The faculty manages the classroom environment and discipline effectively.", category: "Classroom Management", weight: 1.0, order: 4 },
+      { code: "Q05", text: "The faculty is objective and fair in evaluation and grading.", category: "Assessment", weight: 1.0, order: 5 },
+      { code: "Q06", text: "The faculty encourages questions, discussion, and student interaction.", category: "Student Interaction", weight: 1.0, order: 6 },
+      { code: "Q07", text: "The faculty maintains professionalism, punctuality, and regular attendance.", category: "Professionalism", weight: 1.0, order: 7 },
+      { code: "Q08", text: "Overall, I am satisfied with this faculty member's teaching.", category: "Teaching Effectiveness", weight: 1.0, order: 8 },
+    ];
+
+    for (const q of questionsList) {
+      await Question.create({ ...q, institutionId });
+    }
+
+    logger.info(`[Seed] Provisioning complete: clean slate created for ${institutionName}`);
   }
 }

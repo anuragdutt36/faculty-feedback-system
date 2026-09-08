@@ -8,6 +8,21 @@ export const connectDB = async () => {
       serverSelectionTimeoutMS: 10000,
     });
     logger.info("MongoDB connected successfully");
+
+    // Clean up legacy conflicting indexes if present
+    try {
+      const db = mongoose.connection.db;
+      if (db) {
+        const questionIndexes = await db.collection("questions").indexes();
+        const legacyCodeIdx = questionIndexes.find((idx: any) => idx.name === "code_1" && idx.unique);
+        if (legacyCodeIdx) {
+          await db.collection("questions").dropIndex("code_1");
+          logger.info("[DB] Dropped legacy unique index code_1 on questions");
+        }
+      }
+    } catch {
+      // index might not exist or collection not yet created
+    }
   } catch (error: any) {
     logger.error(`MongoDB connection error: ${error.message}`);
     if (env.MONGO_URI.includes("mongodb+srv://")) {

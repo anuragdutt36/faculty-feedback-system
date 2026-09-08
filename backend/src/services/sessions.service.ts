@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import { FeedbackSession, Question, SubmissionStatus } from "../models/feedback.model.js";
 import { logger } from "../utils/logger.js";
 import { FacultySubjectMapping } from "../models/mapping.model.js";
@@ -5,7 +6,6 @@ import { StudentProfile } from "../models/profiles.model.js";
 import { SystemSettings } from "../models/settings.model.js";
 import { CustomError } from "../middleware/errorHandler.js";
 import { NotificationService } from "./notification.service.js";
-
 import { extractNumber, getEligibleFeedbackSemester } from "../utils/academicHelpers.js";
 
 const normalizeStr = (val: unknown): string => {
@@ -78,12 +78,17 @@ export const areBranchesEquivalent = (
 };
 
 export class SessionsService {
-  static async autoUpdateSessionStatuses() {
-    const settings = await SystemSettings.findOne();
+  static async autoUpdateSessionStatuses(institutionId?: string) {
+    const settingsFilter = institutionId ? { institutionId: new mongoose.Types.ObjectId(institutionId) } : {};
+    const settings = await SystemSettings.findOne(settingsFilter);
     if (!settings || !settings.autoActivateBasedOnDate) return;
 
     const now = new Date();
-    const sessions = await FeedbackSession.find({ status: { $in: ["scheduled", "active"] } });
+    const sessionFilter: any = { status: { $in: ["scheduled", "active"] } };
+    if (institutionId) {
+      sessionFilter.institutionId = new mongoose.Types.ObjectId(institutionId);
+    }
+    const sessions = await FeedbackSession.find(sessionFilter);
 
     for (const session of sessions) {
       let nextStatus = session.status;
@@ -97,7 +102,11 @@ export class SessionsService {
         const prevStatus = session.status;
         session.status = nextStatus;
         if (nextStatus === "active") {
-          const activeQuestions = await Question.find({ status: "active" }).sort({ order: 1 });
+          const qFilter: any = { status: "active" };
+          if (session.institutionId) {
+            qFilter.institutionId = session.institutionId;
+          }
+          const activeQuestions = await Question.find(qFilter).sort({ order: 1 });
           session.questions = activeQuestions.map((q) => q._id) as any;
         }
         await session.save();
@@ -120,9 +129,13 @@ export class SessionsService {
     }
   }
 
-  static async getAllSessions() {
-    await this.autoUpdateSessionStatuses();
-    return await FeedbackSession.find()
+  static async getAllSessions(institutionId?: string) {
+    await this.autoUpdateSessionStatuses(institutionId);
+    const filter: any = {};
+    if (institutionId) {
+      filter.institutionId = new mongoose.Types.ObjectId(institutionId);
+    }
+    return await FeedbackSession.find(filter)
       .populate("courseId")
       .populate("branchId")
       .populate("questions")
@@ -139,8 +152,9 @@ export class SessionsService {
     startDate: Date;
     endDate: Date;
     customMessage?: string;
+    institutionId?: string;
   }) {
-    const { name, courseId, branchId, year, semester, academicYear, startDate, endDate, customMessage } = data;
+    const { name, courseId, branchId, year, semester, academicYear, startDate, endDate, customMessage, institutionId } = data;
 
     if (!name || !courseId || !branchId || !year || !semester || !academicYear || !startDate || !endDate) {
       throw new CustomError("All fields (Name, Course, Branch, Year, Semester, Academic Session, Start Date, End Date) are required.", 400);
@@ -153,11 +167,13 @@ export class SessionsService {
     }
 
     const { Course, Branch } = await import("../models/academic.model.js");
-    const courseExists = await Course.findById(courseId);
+    const instFilter = institutionId ? { institutionId: new mongoose.Types.ObjectId(institutionId) } : {};
+
+    const courseExists = await Course.findOne({ _id: courseId, ...instFilter });
     if (!courseExists) {
       throw new CustomError("Selected Course does not exist.", 404);
     }
-    const branchExists = await Branch.findById(branchId);
+    const branchExists = await Branch.findOne({ _id: branchId, ...instFilter });
     if (!branchExists) {
       throw new CustomError("Selected Branch does not exist.", 404);
     }
@@ -172,13 +188,21 @@ export class SessionsService {
       year,
       semester,
       academicYear,
-      status: { $in: ["active", "scheduled"] }
+      status: { $in: ["active", "scheduled"] },
+      ...instFilter,
     });
     if (duplicate) {
       throw new CustomError("An active or scheduled feedback session already exists for this Course, Branch, Semester, and Academic Year.", 400);
     }
 
-    const activeQuestions = await Question.find({ status: "active" }).sort({ order: 1 });
+    const qFilter: any = { status: "active" };
+    if (institutionId) {
+      qFilter.institutionId = new mongoose.Types.ObjectId(institutionId);
+    }
+    let activeQuestions = await Question.find(qFilter).sort({ order: 1 });
+    if (activeQuestions.length === 0 && !institutionId) {
+      activeQuestions = await Question.find({ status: "active" }).sort({ order: 1 });
+    }
     if (activeQuestions.length === 0) {
       throw new CustomError("Cannot create a session because there are no active questions in the Question Bank.", 400);
     }
@@ -193,6 +217,7 @@ export class SessionsService {
     }
 
     const created = await FeedbackSession.create({
+      institutionId: institutionId ? new mongoose.Types.ObjectId(institutionId) : undefined,
       name,
       courseId,
       branchId,
@@ -216,7 +241,7 @@ export class SessionsService {
     return created;
   }
 
-  static async updateSession(id: string, updateData: any) {
+  static async updateSession(id: string, updateData: any, institutionId?: string) {
     if (updateData.startDate && updateData.endDate) {
       const start = new Date(updateData.startDate);
       const end = new Date(updateData.endDate);
@@ -225,15 +250,22 @@ export class SessionsService {
       }
     }
 
+    const filter: any = { _id: id };
+    if (institutionId) {
+      filter.institutionId = new mongoose.Types.ObjectId(institutionId);
+    }
+
     if (updateData.courseId && updateData.branchId) {
-      const { Course, Branch } = await import("../models/academic.model.js");
-      const branchExists = await Branch.findById(updateData.branchId);
+      const { Branch } = await import("../models/academic.model.js");
+      const branchFilter: any = { _id: updateData.branchId };
+      if (institutionId) branchFilter.institutionId = new mongoose.Types.ObjectId(institutionId);
+      const branchExists = await Branch.findOne(branchFilter);
       if (branchExists && branchExists.courseId.toString() !== updateData.courseId.toString()) {
         throw new CustomError("The selected Branch does not belong to the selected Course.", 400);
       }
     }
 
-    const session = await FeedbackSession.findByIdAndUpdate(id, updateData, { new: true })
+    const session = await FeedbackSession.findOneAndUpdate(filter, updateData, { new: true })
       .populate("courseId")
       .populate("branchId")
       .populate("questions");
@@ -243,19 +275,28 @@ export class SessionsService {
     return session;
   }
 
-  static async activateSession(id: string) {
-    const session = await FeedbackSession.findById(id);
+  static async activateSession(id: string, institutionId?: string) {
+    const filter: any = { _id: id };
+    if (institutionId) {
+      filter.institutionId = new mongoose.Types.ObjectId(institutionId);
+    }
+    const session = await FeedbackSession.findOne(filter);
     if (!session) throw new CustomError("Session not found", 404);
 
+    const closeFilter: any = {
+      courseId: session.courseId,
+      branchId: session.branchId,
+      year: session.year,
+      semester: session.semester,
+      _id: { $ne: session._id },
+      status: "active",
+    };
+    if (session.institutionId) {
+      closeFilter.institutionId = session.institutionId;
+    }
+
     await FeedbackSession.updateMany(
-      {
-        courseId: session.courseId,
-        branchId: session.branchId,
-        year: session.year,
-        semester: session.semester,
-        _id: { $ne: session._id },
-        status: "active"
-      },
+      closeFilter,
       {
         status: "closed",
         endDate: new Date()
@@ -269,7 +310,11 @@ export class SessionsService {
       session.endDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
     }
 
-    const activeQuestions = await Question.find({ status: "active" }).sort({ order: 1 });
+    const qFilter: any = { status: "active" };
+    if (session.institutionId) {
+      qFilter.institutionId = session.institutionId;
+    }
+    const activeQuestions = await Question.find(qFilter).sort({ order: 1 });
     if (activeQuestions.length === 0) {
       throw new CustomError("Cannot activate this session because there are no active questions in the Question Bank.", 400);
     }
@@ -284,8 +329,12 @@ export class SessionsService {
     return populated;
   }
 
-  static async closeSession(id: string) {
-    const session = await FeedbackSession.findById(id);
+  static async closeSession(id: string, institutionId?: string) {
+    const filter: any = { _id: id };
+    if (institutionId) {
+      filter.institutionId = new mongoose.Types.ObjectId(institutionId);
+    }
+    const session = await FeedbackSession.findOne(filter);
     if (!session) throw new CustomError("Session not found", 404);
 
     session.status = "closed";
@@ -298,16 +347,24 @@ export class SessionsService {
     return populated;
   }
 
-  static async deleteSession(id: string) {
-    const result = await FeedbackSession.findByIdAndDelete(id);
+  static async deleteSession(id: string, institutionId?: string) {
+    const filter: any = { _id: id };
+    if (institutionId) {
+      filter.institutionId = new mongoose.Types.ObjectId(institutionId);
+    }
+    const result = await FeedbackSession.findOneAndDelete(filter);
     if (!result) {
       throw new CustomError("Session not found", 404);
     }
   }
 
   // --- Student Specific ---
-  static async getStudentActiveSessions(studentUserId: string) {
-    const student = await StudentProfile.findOne({ userId: studentUserId })
+  static async getStudentActiveSessions(studentUserId: string, institutionId?: string) {
+    const studentFilter: any = { userId: studentUserId };
+    if (institutionId) {
+      studentFilter.institutionId = new mongoose.Types.ObjectId(institutionId);
+    }
+    const student = await StudentProfile.findOne(studentFilter)
       .populate("courseId")
       .populate("branchId");
 
@@ -315,7 +372,8 @@ export class SessionsService {
       throw new CustomError("Student profile not found", 404);
     }
 
-    await this.autoUpdateSessionStatuses();
+    const instId = student.institutionId?.toString() || institutionId;
+    await this.autoUpdateSessionStatuses(instId);
 
     const rawCourse = student.courseId as any;
     const rawBranch = student.branchId as any;
@@ -339,7 +397,12 @@ export class SessionsService {
       return [];
     }
 
-    const allActiveSessions = await FeedbackSession.find({ status: "active" })
+    const sessionQuery: any = { status: "active" };
+    if (instId) {
+      sessionQuery.institutionId = new mongoose.Types.ObjectId(instId);
+    }
+
+    const allActiveSessions = await FeedbackSession.find(sessionQuery)
       .populate("courseId")
       .populate("branchId")
       .populate("questions");
@@ -402,12 +465,16 @@ export class SessionsService {
       const semNum = extractNumber(session.semester);
       const semQuery = semNum !== null ? { $in: [session.semester, semNum, String(semNum)] } : session.semester;
 
+      const mapInstFilter = instId ? { institutionId: new mongoose.Types.ObjectId(instId) } : {};
+
       // Fetch mapping records linked to the matched session's semester & branch
       let mappings = await FacultySubjectMapping.find({
         courseId: { $in: courseIdsToMatch },
         branchId: { $in: branchIdsToMatch },
         semester: semQuery,
+        academicYear: session.academicYear,
         status: { $ne: "inactive" },
+        ...mapInstFilter,
       })
         .populate("facultyId")
         .populate("subjectId");
@@ -416,7 +483,9 @@ export class SessionsService {
         mappings = await FacultySubjectMapping.find({
           branchId: { $in: branchIdsToMatch },
           semester: semQuery,
+          academicYear: session.academicYear,
           status: { $ne: "inactive" },
+          ...mapInstFilter,
         })
           .populate("facultyId")
           .populate("subjectId");
@@ -425,7 +494,9 @@ export class SessionsService {
       if (mappings.length === 0) {
         mappings = await FacultySubjectMapping.find({
           semester: semQuery,
+          academicYear: session.academicYear,
           status: { $ne: "inactive" },
+          ...mapInstFilter,
         })
           .populate("facultyId")
           .populate("subjectId");
@@ -450,12 +521,10 @@ export class SessionsService {
           studentId: student._id,
           feedbackSessionId: session._id,
           subjectId: (map.subjectId as any)._id || map.subjectId,
+          ...(instId ? { institutionId: new mongoose.Types.ObjectId(instId) } : {}),
         });
 
         const submitted = submission ? submission.submitted : false;
-
-        const facultyObj = map.facultyId as any;
-        const subjectObj = map.subjectId as any;
 
         subjectsFeedback.push({
           mappingId: map._id,
@@ -500,3 +569,4 @@ export class SessionsService {
     return result;
   }
 }
+export default SessionsService;

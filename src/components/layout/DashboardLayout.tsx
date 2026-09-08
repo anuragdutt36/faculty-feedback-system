@@ -4,15 +4,19 @@ import { Sidebar } from "./Sidebar.js";
 import { Header } from "./Header.js";
 import { Footer } from "./Footer.js";
 import { useTheme } from "../../context/ThemeContext.js";
+import { useAuth } from "../../context/AuthContext.js";
+import { FlaskConical } from "lucide-react";
 
 export const DashboardLayout: React.FC = () => {
   const { dark } = useTheme();
+  const { user } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const bg = dark ? "bg-[#0D1B3E]" : "bg-[#EEF2F8]";
 
   return (
     <div className={`min-h-screen flex flex-col ${bg} transition-colors`} style={{ fontFamily: "'Inter', sans-serif" }}>
+
       {/* Top Navigation Header (Desktop horizontal tabs & mobile fixed bar) */}
       <Header onToggleMobileMenu={() => setMobileMenuOpen(!mobileMenuOpen)} />
 

@@ -2,6 +2,7 @@ import mongoose, { Schema, Document } from "mongoose";
 
 // Question model
 export interface IQuestion extends Document {
+  institutionId?: mongoose.Types.ObjectId; // References Institution
   code: string; // unique code, e.g. Q01
   text: string;
   category: string; // e.g. Teaching, Punctuality, Interaction, Assessment
@@ -14,7 +15,8 @@ export interface IQuestion extends Document {
 
 const QuestionSchema = new Schema<IQuestion>(
   {
-    code: { type: String, required: true, unique: true, uppercase: true, trim: true, index: true },
+    institutionId: { type: Schema.Types.ObjectId, ref: "Institution", index: true },
+    code: { type: String, required: true, uppercase: true, trim: true },
     text: { type: String, required: true, trim: true },
     category: { type: String, required: true, trim: true },
     weight: { type: Number, required: true, default: 1.0 },
@@ -24,10 +26,13 @@ const QuestionSchema = new Schema<IQuestion>(
   { timestamps: true }
 );
 
+QuestionSchema.index({ institutionId: 1, code: 1 });
+
 export const Question = mongoose.model<IQuestion>("Question", QuestionSchema);
 
 // FeedbackSession model
 export interface IFeedbackSession extends Document {
+  institutionId?: mongoose.Types.ObjectId; // References Institution
   name: string; // e.g. Even Sem Feedback MCA 2nd Year
   courseId: mongoose.Types.ObjectId;
   branchId: mongoose.Types.ObjectId;
@@ -45,6 +50,7 @@ export interface IFeedbackSession extends Document {
 
 const FeedbackSessionSchema = new Schema<IFeedbackSession>(
   {
+    institutionId: { type: Schema.Types.ObjectId, ref: "Institution", index: true },
     name: { type: String, required: true, trim: true },
     courseId: { type: Schema.Types.ObjectId, ref: "Course", required: true },
     branchId: { type: Schema.Types.ObjectId, ref: "Branch", required: true },
@@ -68,6 +74,7 @@ export const FeedbackSession = mongoose.model<IFeedbackSession>("FeedbackSession
 
 // SubmissionStatus model (tracks if student completed feedback for this subject in session)
 export interface ISubmissionStatus extends Document {
+  institutionId?: mongoose.Types.ObjectId; // References Institution
   studentId: mongoose.Types.ObjectId; // References StudentProfile
   feedbackSessionId: mongoose.Types.ObjectId; // References FeedbackSession
   subjectId: mongoose.Types.ObjectId; // References Subject
@@ -77,6 +84,7 @@ export interface ISubmissionStatus extends Document {
 
 const SubmissionStatusSchema = new Schema<ISubmissionStatus>(
   {
+    institutionId: { type: Schema.Types.ObjectId, ref: "Institution", index: true },
     studentId: { type: Schema.Types.ObjectId, ref: "StudentProfile", required: true, index: true },
     feedbackSessionId: { type: Schema.Types.ObjectId, ref: "FeedbackSession", required: true },
     subjectId: { type: Schema.Types.ObjectId, ref: "Subject", required: true },
@@ -93,6 +101,7 @@ export const SubmissionStatus = mongoose.model<ISubmissionStatus>("SubmissionSta
 
 // ActiveSubmissionToken model (temporary pool of generated submission tokens)
 export interface IActiveSubmissionToken extends Document {
+  institutionId?: mongoose.Types.ObjectId; // References Institution
   token: string;
   feedbackSessionId: mongoose.Types.ObjectId;
   subjectId: mongoose.Types.ObjectId;
@@ -103,6 +112,7 @@ export interface IActiveSubmissionToken extends Document {
 
 const ActiveSubmissionTokenSchema = new Schema<IActiveSubmissionToken>(
   {
+    institutionId: { type: Schema.Types.ObjectId, ref: "Institution", index: true },
     token: { type: String, required: true, unique: true, index: true },
     feedbackSessionId: { type: Schema.Types.ObjectId, ref: "FeedbackSession", required: true },
     subjectId: { type: Schema.Types.ObjectId, ref: "Subject", required: true },
@@ -120,6 +130,7 @@ export const ActiveSubmissionToken = mongoose.model<IActiveSubmissionToken>(
 
 // FeedbackResponse model (Stores actual feedback responses anonymously)
 export interface IFeedbackResponse extends Document {
+  institutionId?: mongoose.Types.ObjectId; // References Institution
   feedbackSessionId: mongoose.Types.ObjectId;
   subjectId: mongoose.Types.ObjectId;
   facultyId: mongoose.Types.ObjectId;
@@ -138,6 +149,7 @@ export interface IFeedbackResponse extends Document {
 
 const FeedbackResponseSchema = new Schema<IFeedbackResponse>(
   {
+    institutionId: { type: Schema.Types.ObjectId, ref: "Institution", index: true },
     feedbackSessionId: { type: Schema.Types.ObjectId, ref: "FeedbackSession", required: true, index: true },
     subjectId: { type: Schema.Types.ObjectId, ref: "Subject", required: true, index: true },
     facultyId: { type: Schema.Types.ObjectId, ref: "FacultyProfile", required: true, index: true },

@@ -11,23 +11,23 @@ export class NotificationService {
     title: string,
     message: string,
     category: NotificationCategory,
-    relatedSessionId?: mongoose.Types.ObjectId | string | null
+    relatedSessionId?: mongoose.Types.ObjectId | string | null,
+    institutionId?: mongoose.Types.ObjectId | string | null
   ) {
     try {
       await Notification.create({
+        institutionId: institutionId ? new mongoose.Types.ObjectId(institutionId) : undefined,
         studentId,
         title,
         message,
         category,
         isRead: false,
-        relatedSessionId: relatedSessionId || null,
+        relatedSessionId: relatedSessionId ? new mongoose.Types.ObjectId(relatedSessionId) : null,
       });
     } catch (err) {
       logger.error(`[NotificationService] createForStudent error: ${err}`);
     }
   }
-
-  // ─── Fan-out to all eligible students when a session is activated ─────
 
   // ─── Fan-out to all eligible students when a session is activated ─────
 
@@ -40,6 +40,8 @@ export class NotificationService {
       const sessionId = session._id || session.id;
       const populatedSession = await FeedbackSession.findById(sessionId).populate(["courseId", "branchId"]);
       if (!populatedSession || populatedSession.status !== "active") return;
+
+      const instId = populatedSession.institutionId;
 
       const sessCourse = populatedSession.courseId as any;
       const sessBranch = populatedSession.branchId as any;
@@ -58,7 +60,11 @@ export class NotificationService {
       const customMsg = (populatedSession as any).customMessage?.trim();
       const message = customMsg && customMsg.length > 0 ? customMsg : defaultBody;
 
-      const allStudents = await StudentProfile.find({ status: "active" }).populate("courseId").populate("branchId");
+      const studentFilter: any = { status: "active" };
+      if (instId) {
+        studentFilter.institutionId = instId;
+      }
+      const allStudents = await StudentProfile.find(studentFilter).populate("courseId").populate("branchId");
 
       for (const student of allStudents) {
         const studCourse = student.courseId as any;
@@ -78,21 +84,24 @@ export class NotificationService {
         const semMatches = targetSemester !== null && sessSemNum !== null && targetSemester === sessSemNum;
 
         if (courseMatches && branchMatches && semMatches) {
-          const alreadyExists = await Notification.findOne({
-            studentId: student._id,
-            relatedSessionId: sessionId,
-            title,
-          });
-
-          if (!alreadyExists) {
-            await Notification.create({
+          const result = await Notification.updateOne(
+            {
               studentId: student._id,
-              title,
-              message,
-              category: "feedback",
-              isRead: false,
               relatedSessionId: sessionId,
-            });
+              title,
+            },
+            {
+              $setOnInsert: {
+                institutionId: instId || student.institutionId,
+                message,
+                category: "feedback",
+                isRead: false,
+              },
+            },
+            { upsert: true }
+          );
+
+          if (result.upsertedId) {
             logger.info(`[NotificationService] Created notification for student ${student.email} for session ${sessionId}`);
           }
         }
@@ -104,16 +113,25 @@ export class NotificationService {
 
   // ─── Auto-sync active session notifications for student ─────────────────
 
-  static async ensureNotificationsForStudent(studentUserId: string) {
+  static async ensureNotificationsForStudent(studentUserId: string, institutionId?: string) {
     try {
-      const student = await StudentProfile.findOne({ userId: studentUserId }).populate("courseId").populate("branchId");
+      const studentFilter: any = { userId: studentUserId };
+      if (institutionId) {
+        studentFilter.institutionId = new mongoose.Types.ObjectId(institutionId);
+      }
+      const student = await StudentProfile.findOne(studentFilter).populate("courseId").populate("branchId");
       if (!student) return;
 
       const { FeedbackSession } = await import("../models/feedback.model.js");
       const { areCoursesEquivalent, areBranchesEquivalent } = await import("./sessions.service.js");
       const { extractNumber, getEligibleFeedbackSemester } = await import("../utils/academicHelpers.js");
 
-      const activeSessions = await FeedbackSession.find({ status: "active" }).populate(["courseId", "branchId"]);
+      const instId = student.institutionId || (institutionId ? new mongoose.Types.ObjectId(institutionId) : undefined);
+      const sessionFilter: any = { status: "active" };
+      if (instId) {
+        sessionFilter.institutionId = instId;
+      }
+      const activeSessions = await FeedbackSession.find(sessionFilter).populate(["courseId", "branchId"]);
 
       const studCourse = student.courseId as any;
       const studBranch = student.branchId as any;
@@ -144,21 +162,24 @@ export class NotificationService {
           const customMsg = (session as any).customMessage?.trim();
           const message = customMsg && customMsg.length > 0 ? customMsg : defaultBody;
 
-          const alreadyExists = await Notification.findOne({
-            studentId: student._id,
-            relatedSessionId: session._id,
-            title,
-          });
-
-          if (!alreadyExists) {
-            await Notification.create({
+          const result = await Notification.updateOne(
+            {
               studentId: student._id,
-              title,
-              message,
-              category: "feedback",
-              isRead: false,
               relatedSessionId: session._id,
-            });
+              title,
+            },
+            {
+              $setOnInsert: {
+                institutionId: instId,
+                message,
+                category: "feedback",
+                isRead: false,
+              },
+            },
+            { upsert: true }
+          );
+
+          if (result.upsertedId) {
             logger.info(`[NotificationService] Auto-synced session notification for student ${student.email}`);
           }
         }
@@ -177,6 +198,8 @@ export class NotificationService {
       const title = "Feedback Session Closed";
       const message = `The feedback session for ${semLabel} has been closed. No further submissions will be accepted.`;
 
+      const instId = session.institutionId;
+
       // Find all students who received the "available" notification for this session
       const originalNotifs = await Notification.find({
         relatedSessionId: sessionId,
@@ -194,6 +217,7 @@ export class NotificationService {
           });
           if (alreadyExists) return null;
           return {
+            institutionId: instId || n.institutionId,
             studentId: n.studentId,
             title,
             message,
@@ -214,72 +238,16 @@ export class NotificationService {
     }
   }
 
-  // ─── Deadline reminders (called by a cron or on-demand) ──────────────
-
-  static async scheduleDeadlineReminders() {
-    try {
-      const { FeedbackSession } = await import("../models/feedback.model.js");
-      const now = new Date();
-      const activeSessions = await FeedbackSession.find({ status: "active" });
-
-      for (const session of activeSessions) {
-        const endDate = new Date(session.endDate);
-        const daysLeft = Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-
-        let reminderTitle: string | null = null;
-        let reminderMsg: string | null = null;
-
-        if (daysLeft === 3) {
-          reminderTitle = "Feedback Deadline Reminder";
-          reminderMsg = `Your Semester ${session.semester} feedback session closes in 3 days (${endDate.toLocaleDateString()}). Please complete your submissions.`;
-        } else if (daysLeft === 1) {
-          reminderTitle = "Feedback Deadline Tomorrow";
-          reminderMsg = `Your Semester ${session.semester} feedback session closes tomorrow. This is your last chance to submit.`;
-        } else if (daysLeft === 0) {
-          reminderTitle = "Feedback Session Closes Today";
-          reminderMsg = `Your Semester ${session.semester} feedback session closes today. Submit immediately to have your evaluation recorded.`;
-        }
-
-        if (!reminderTitle) continue;
-
-        // Find all students who received the original "available" notification for this session
-        const originalNotifs = await Notification.find({
-          relatedSessionId: session._id,
-          title: "New Feedback Session Available",
-        });
-
-        for (const n of originalNotifs) {
-          // Avoid sending same reminder twice per day
-          const today = new Date();
-          today.setHours(0, 0, 0, 0);
-          const alreadySent = await Notification.findOne({
-            studentId: n.studentId,
-            relatedSessionId: session._id,
-            title: reminderTitle,
-            createdAt: { $gte: today },
-          });
-          if (alreadySent) continue;
-
-          await this.createForStudent(
-            n.studentId as any,
-            reminderTitle,
-            reminderMsg!,
-            "feedback",
-            session._id as any
-          );
-        }
-      }
-    } catch (err) {
-      logger.error(`[NotificationService] scheduleDeadlineReminders error: ${err}`);
-    }
-  }
-
   // ─── Student CRUD ─────────────────────────────────────────────────────
 
-  static async getForStudent(studentUserId: string, markRead = false) {
-    await this.ensureNotificationsForStudent(studentUserId);
+  static async getForStudent(studentUserId: string, markRead = false, institutionId?: string) {
+    await this.ensureNotificationsForStudent(studentUserId, institutionId);
 
-    const student = await StudentProfile.findOne({ userId: studentUserId });
+    const studentFilter: any = { userId: studentUserId };
+    if (institutionId) {
+      studentFilter.institutionId = new mongoose.Types.ObjectId(institutionId);
+    }
+    const student = await StudentProfile.findOne(studentFilter);
     if (!student) return [];
 
     const notifs = await Notification.find({ studentId: student._id })
@@ -296,22 +264,34 @@ export class NotificationService {
     return notifs;
   }
 
-  static async getUnreadCount(studentUserId: string): Promise<number> {
-    await this.ensureNotificationsForStudent(studentUserId);
+  static async getUnreadCount(studentUserId: string, institutionId?: string): Promise<number> {
+    await this.ensureNotificationsForStudent(studentUserId, institutionId);
 
-    const student = await StudentProfile.findOne({ userId: studentUserId });
+    const studentFilter: any = { userId: studentUserId };
+    if (institutionId) {
+      studentFilter.institutionId = new mongoose.Types.ObjectId(institutionId);
+    }
+    const student = await StudentProfile.findOne(studentFilter);
     if (!student) return 0;
     return await Notification.countDocuments({ studentId: student._id, isRead: false });
   }
 
-  static async markAllRead(studentUserId: string) {
-    const student = await StudentProfile.findOne({ userId: studentUserId });
+  static async markAllRead(studentUserId: string, institutionId?: string) {
+    const studentFilter: any = { userId: studentUserId };
+    if (institutionId) {
+      studentFilter.institutionId = new mongoose.Types.ObjectId(institutionId);
+    }
+    const student = await StudentProfile.findOne(studentFilter);
     if (!student) return;
     await Notification.updateMany({ studentId: student._id, isRead: false }, { isRead: true });
   }
 
-  static async markOneRead(notifId: string, studentUserId: string) {
-    const student = await StudentProfile.findOne({ userId: studentUserId });
+  static async markOneRead(notifId: string, studentUserId: string, institutionId?: string) {
+    const studentFilter: any = { userId: studentUserId };
+    if (institutionId) {
+      studentFilter.institutionId = new mongoose.Types.ObjectId(institutionId);
+    }
+    const student = await StudentProfile.findOne(studentFilter);
     if (!student) return;
     await Notification.findOneAndUpdate(
       { _id: notifId, studentId: student._id },
@@ -319,8 +299,12 @@ export class NotificationService {
     );
   }
 
-  static async deleteOne(notifId: string, studentUserId: string) {
-    const student = await StudentProfile.findOne({ userId: studentUserId });
+  static async deleteOne(notifId: string, studentUserId: string, institutionId?: string) {
+    const studentFilter: any = { userId: studentUserId };
+    if (institutionId) {
+      studentFilter.institutionId = new mongoose.Types.ObjectId(institutionId);
+    }
+    const student = await StudentProfile.findOne(studentFilter);
     if (!student) return;
     await Notification.findOneAndDelete({ _id: notifId, studentId: student._id });
   }

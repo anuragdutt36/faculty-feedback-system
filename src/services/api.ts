@@ -27,19 +27,29 @@ export const getFormattedLogoUrl = (url?: string): string => {
 };
 
 export const apiFetch = async (endpoint: string, options: RequestInit = {}) => {
-  const token = localStorage.getItem("knit-auth-token");
-  
   const headers = new Headers(options.headers || {});
   if (!headers.has("Content-Type") && !(options.body instanceof FormData)) {
     headers.set("Content-Type", "application/json");
   }
-  if (token) {
+
+  const token = localStorage.getItem("accessToken");
+  if (token && !headers.has("Authorization")) {
     headers.set("Authorization", `Bearer ${token}`);
+  }
+
+  const tenantId = sessionStorage.getItem("currentInstitutionId") || localStorage.getItem("currentInstitutionId");
+  const tenantSlug = sessionStorage.getItem("currentInstitutionSlug") || localStorage.getItem("currentInstitutionSlug");
+  if (tenantId && !headers.has("X-Institution-Id")) {
+    headers.set("X-Institution-Id", tenantId);
+  }
+  if (tenantSlug && !headers.has("X-Institution-Slug")) {
+    headers.set("X-Institution-Slug", tenantSlug);
   }
 
   const response = await fetch(`${API_BASE_URL}${endpoint}`, {
     ...options,
     headers,
+    credentials: "include",
   });
 
   const data = await response.json();
@@ -52,12 +62,19 @@ export const apiFetch = async (endpoint: string, options: RequestInit = {}) => {
 };
 
 export const apiDownload = async (endpoint: string, filename: string) => {
-  const token = localStorage.getItem("knit-auth-token");
   const headers: Record<string, string> = {};
-  if (token) {
-    headers["Authorization"] = `Bearer ${token}`;
-  }
-  const response = await fetch(`${API_BASE_URL}${endpoint}`, { headers });
+  const token = localStorage.getItem("accessToken");
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+
+  const tenantId = sessionStorage.getItem("currentInstitutionId") || localStorage.getItem("currentInstitutionId");
+  const tenantSlug = sessionStorage.getItem("currentInstitutionSlug") || localStorage.getItem("currentInstitutionSlug");
+  if (tenantId) headers["X-Institution-Id"] = tenantId;
+  if (tenantSlug) headers["X-Institution-Slug"] = tenantSlug;
+
+  const response = await fetch(`${API_BASE_URL}${endpoint}`, { 
+    headers,
+    credentials: "include",
+  });
   if (!response.ok) throw new Error("Download failed");
   const blob = await response.blob();
   const url = window.URL.createObjectURL(blob);

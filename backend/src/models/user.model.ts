@@ -1,6 +1,6 @@
 import mongoose, { Schema, Document } from "mongoose";
 
-export type UserRole = "admin" | "student" | "faculty" | "hod";
+export type UserRole = "admin" | "student" | "faculty" | "hod" | "dean";
 export type UserStatus = "active" | "inactive";
 
 export interface IUser extends Document {
@@ -8,6 +8,7 @@ export interface IUser extends Document {
   password?: string; // optional since students don't have passwords
   role: UserRole;
   status: UserStatus;
+  institutionId?: mongoose.Types.ObjectId; // References Institution
   refreshTokens: string[];
   createdAt: Date;
   updatedAt: Date;
@@ -30,13 +31,18 @@ const UserSchema: Schema = new Schema(
     role: {
       type: String,
       required: true,
-      enum: ["admin", "student", "faculty", "hod"],
+      enum: ["admin", "student", "faculty", "hod", "dean"],
     },
     status: {
       type: String,
       required: true,
       enum: ["active", "inactive"],
       default: "active",
+    },
+    institutionId: {
+      type: Schema.Types.ObjectId,
+      ref: "Institution",
+      index: true,
     },
     refreshTokens: {
       type: [String],

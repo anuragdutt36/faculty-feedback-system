@@ -3,10 +3,11 @@ import { useNavigate, useLocation } from "react-router";
 import {
   LayoutDashboard, Building2, BookOpen, Users, HelpCircle, GitMerge,
   ClipboardList, BarChart3, LineChart, ScrollText, Settings, LogOut,
-  Bell, Shield, History, TrendingUp, X
+  Bell, Shield, History, TrendingUp, X, User
 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext.js";
 import { useSettings } from "../../context/SettingsContext.js";
+import { useTenant } from "../../context/TenantContext.js";
 import { LogoMark } from "../common/LogoMark.js";
 
 interface SidebarProps {
@@ -20,7 +21,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, onCloseMobile }) =
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const { systemName } = useSettings();
+  const { systemName: globalSystemName } = useSettings();
+  const { institution: tenantInst, portalSlug } = useTenant();
+
+  const sysDisplayName = tenantInst?.settings?.systemName || tenantInst?.name || globalSystemName || (portalSlug ? portalSlug.toUpperCase() : "Faculty Feedback");
 
   if (!user) return null;
 
@@ -81,12 +85,20 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, onCloseMobile }) =
           },
         ];
       case "hod":
+      case "dean":
+        const basePath = user.role === "dean" ? "/dean" : "/hod";
         return [
           {
-            group: "HOD Portal",
+            group: user.role === "dean" ? "Dean Portal" : "HOD Portal",
             items: [
-              { path: "/hod", label: "Dashboard", icon: LayoutDashboard, exact: true },
-              { path: "/hod/reports", label: "Department Reports", icon: BarChart3 },
+              { path: basePath, label: "Dashboard", icon: LayoutDashboard, exact: true },
+              { path: `${basePath}/faculty-performance`, label: "Faculty Performance", icon: Users },
+              { path: `${basePath}/subject-performance`, label: "Subject Performance", icon: BookOpen },
+              { path: `${basePath}/trends`, label: "Feedback Trends", icon: TrendingUp },
+              { path: `${basePath}/reports`, label: "Reports", icon: BarChart3 },
+              { path: `${basePath}/notifications`, label: "Notifications", icon: Bell },
+              { path: `${basePath}/profile`, label: "Profile", icon: User },
+              { path: `${basePath}/help`, label: "Help & FAQ", icon: HelpCircle },
             ],
           },
         ];
@@ -96,8 +108,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, onCloseMobile }) =
             group: "Faculty Portal",
             items: [
               { path: "/faculty", label: "Dashboard", icon: LayoutDashboard, exact: true },
-              { path: "/faculty/reports", label: "Feedback Reports", icon: BarChart3 },
-              { path: "/faculty/trends", label: "Trends", icon: TrendingUp },
+              { path: "/faculty/my-feedback", label: "My Feedback", icon: ClipboardList },
+              { path: "/faculty/reports", label: "Reports", icon: BarChart3 },
+              { path: "/faculty/profile", label: "Profile", icon: User },
+              { path: "/faculty/notifications", label: "Notifications", icon: Bell },
+              { path: "/faculty/help", label: "Help & FAQ", icon: HelpCircle },
             ],
           },
         ];
@@ -112,7 +127,14 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, onCloseMobile }) =
     if (exact) {
       return location.pathname === path;
     }
-    return location.pathname === path || (path !== "/admin" && path !== "/student" && location.pathname.startsWith(path));
+    return (
+      location.pathname === path ||
+      (path !== "/admin" &&
+        path !== "/student" &&
+        path !== "/hod" &&
+        path !== "/faculty" &&
+        location.pathname.startsWith(path))
+    );
   };
 
   const getUserInitials = (name?: string) => {
@@ -147,7 +169,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, onCloseMobile }) =
                 className="text-white font-bold text-xs truncate leading-tight"
                 style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
               >
-                {systemName || "KNIT"} System
+                {sysDisplayName} System
               </div>
               <div className="text-blue-200/70 text-[10px] truncate capitalize">
                 {user.role} Portal

@@ -174,7 +174,7 @@ export const FeedbackForm: React.FC = () => {
   if (step === "success") {
     return (
       <div className={cn("min-h-screen flex items-center justify-center p-6", dark ? "bg-[#0A1128]" : "bg-[#EEF2F8]")} style={{ fontFamily: "'Inter', sans-serif" }}>
-        <div className={cn("rounded-3xl p-8 max-w-md w-full text-center border shadow-xl animate-in zoom-in-95 duration-300", cardBg)}>
+        <div className={cn("rounded-3xl p-8 max-w-md w-full text-center border shadow-xl", cardBg)}>
           <div className="w-16 h-16 rounded-full bg-emerald-100 border border-emerald-200 flex items-center justify-center mx-auto mb-4 dark:bg-emerald-900/30 dark:border-emerald-800">
             <CheckCircle2 size={32} className="text-emerald-600 dark:text-emerald-400" />
           </div>
@@ -209,7 +209,7 @@ export const FeedbackForm: React.FC = () => {
   if (step === "confirm") {
     return (
       <div className={cn("min-h-screen flex items-center justify-center p-6 z-50 fixed inset-0 backdrop-blur-sm bg-black/60")} style={{ fontFamily: "'Inter', sans-serif" }}>
-        <div className={cn("rounded-3xl shadow-2xl p-8 max-w-md w-full animate-in zoom-in-95 duration-200", cardBg, "bg-white dark:bg-[#132052]")}>
+        <div className={cn("rounded-3xl shadow-2xl p-8 max-w-md w-full", cardBg, "bg-white dark:bg-[#132052]")}>
           <div className="w-14 h-14 rounded-2xl bg-amber-100 border border-amber-200 flex items-center justify-center mb-5 dark:bg-amber-900/30 dark:border-amber-800">
             <Send size={24} className="text-amber-600 dark:text-amber-400" />
           </div>

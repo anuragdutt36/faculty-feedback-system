@@ -26,6 +26,7 @@ export const RoleRoute: React.FC<RoleRouteProps> = ({ children, allowedRoles }) 
       if (user.role === "student") return <Navigate to="/student" replace />;
       if (user.role === "admin") return <Navigate to="/admin" replace />;
       if (user.role === "hod") return <Navigate to="/hod" replace />;
+      if (user.role === "dean") return <Navigate to="/dean" replace />;
       if (user.role === "faculty") return <Navigate to="/faculty" replace />;
     }
     return <Navigate to="/" replace />;

@@ -5,10 +5,15 @@ import { AuthenticatedRequest } from "../types/index.js";
 import { logAudit } from "../utils/auditLogger.js";
 
 export class AcademicController {
+  private static getTenantId(req: AuthenticatedRequest) {
+    return req.user?.institutionId || req.institution?._id;
+  }
+
   // --- Course ---
   static async getCourses(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
-      const courses = await AcademicService.getAllCourses();
+      const instId = AcademicController.getTenantId(req);
+      const courses = await AcademicService.getAllCourses(instId);
       return res.status(200).json(ApiResponse.success("Courses fetched", courses));
     } catch (error) {
       next(error);
@@ -18,9 +23,11 @@ export class AcademicController {
   static async createCourse(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
       const { name, duration } = req.body;
-      const course = await AcademicService.createCourse(name, duration);
+      const instId = AcademicController.getTenantId(req);
+      const course = await AcademicService.createCourse(name, duration, instId);
 
       await logAudit({
+        institutionId: instId,
         userId: req.user?.id,
         action: "COURSE_CREATE",
         details: `Created course ${name} with duration ${duration} years`,
@@ -36,9 +43,11 @@ export class AcademicController {
   static async updateCourse(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
       const { id } = req.params;
-      const course = await AcademicService.updateCourse(id, req.body);
+      const instId = AcademicController.getTenantId(req);
+      const course = await AcademicService.updateCourse(id, req.body, instId);
 
       await logAudit({
+        institutionId: instId,
         userId: req.user?.id,
         action: "COURSE_UPDATE",
         details: `Updated course ID: ${id}`,
@@ -54,9 +63,11 @@ export class AcademicController {
   static async deleteCourse(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
       const { id } = req.params;
-      await AcademicService.deleteCourse(id);
+      const instId = AcademicController.getTenantId(req);
+      await AcademicService.deleteCourse(id, instId);
 
       await logAudit({
+        institutionId: instId,
         userId: req.user?.id,
         action: "COURSE_DELETE",
         details: `Deleted course ID: ${id}`,
@@ -72,7 +83,8 @@ export class AcademicController {
   // --- Branch ---
   static async getBranches(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
-      const branches = await AcademicService.getAllBranches();
+      const instId = AcademicController.getTenantId(req);
+      const branches = await AcademicService.getAllBranches(instId);
       return res.status(200).json(ApiResponse.success("Branches fetched", branches));
     } catch (error) {
       next(error);
@@ -82,9 +94,11 @@ export class AcademicController {
   static async createBranch(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
       const { code, name, courseId, coordinatorId } = req.body;
-      const branch = await AcademicService.createBranch(code, name, courseId, coordinatorId);
+      const instId = AcademicController.getTenantId(req);
+      const branch = await AcademicService.createBranch(code, name, courseId, coordinatorId, instId);
 
       await logAudit({
+        institutionId: instId,
         userId: req.user?.id,
         action: "BRANCH_CREATE",
         details: `Created branch ${code} - ${name} under course ID: ${courseId}`,
@@ -100,9 +114,11 @@ export class AcademicController {
   static async updateBranch(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
       const { id } = req.params;
-      const branch = await AcademicService.updateBranch(id, req.body);
+      const instId = AcademicController.getTenantId(req);
+      const branch = await AcademicService.updateBranch(id, req.body, instId);
 
       await logAudit({
+        institutionId: instId,
         userId: req.user?.id,
         action: "BRANCH_UPDATE",
         details: `Updated branch ID: ${id}`,
@@ -118,9 +134,11 @@ export class AcademicController {
   static async deleteBranch(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
       const { id } = req.params;
-      await AcademicService.deleteBranch(id);
+      const instId = AcademicController.getTenantId(req);
+      await AcademicService.deleteBranch(id, instId);
 
       await logAudit({
+        institutionId: instId,
         userId: req.user?.id,
         action: "BRANCH_DELETE",
         details: `Deleted branch ID: ${id}`,
@@ -136,7 +154,8 @@ export class AcademicController {
   // --- Subject ---
   static async getSubjects(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
-      const subjects = await AcademicService.getAllSubjects();
+      const instId = AcademicController.getTenantId(req);
+      const subjects = await AcademicService.getAllSubjects(instId);
       return res.status(200).json(ApiResponse.success("Subjects fetched", subjects));
     } catch (error) {
       next(error);
@@ -146,9 +165,11 @@ export class AcademicController {
   static async createSubject(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
       const { code, name, courseId, branchId, semester, credits } = req.body;
-      const subject = await AcademicService.createSubject(code, name, courseId, branchId, semester, credits ? Number(credits) : undefined);
+      const instId = AcademicController.getTenantId(req);
+      const subject = await AcademicService.createSubject(code, name, courseId, branchId, semester, credits ? Number(credits) : undefined, instId);
 
       await logAudit({
+        institutionId: instId,
         userId: req.user?.id,
         action: "SUBJECT_CREATE",
         details: `Created subject ${code} - ${name}`,
@@ -164,9 +185,11 @@ export class AcademicController {
   static async updateSubject(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
       const { id } = req.params;
-      const subject = await AcademicService.updateSubject(id, req.body);
+      const instId = AcademicController.getTenantId(req);
+      const subject = await AcademicService.updateSubject(id, req.body, instId);
 
       await logAudit({
+        institutionId: instId,
         userId: req.user?.id,
         action: "SUBJECT_UPDATE",
         details: `Updated subject ID: ${id}`,
@@ -182,9 +205,11 @@ export class AcademicController {
   static async deleteSubject(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
       const { id } = req.params;
-      await AcademicService.deleteSubject(id);
+      const instId = AcademicController.getTenantId(req);
+      await AcademicService.deleteSubject(id, instId);
 
       await logAudit({
+        institutionId: instId,
         userId: req.user?.id,
         action: "SUBJECT_DELETE",
         details: `Deleted subject ID: ${id}`,
@@ -200,7 +225,8 @@ export class AcademicController {
   // --- Year ---
   static async getYears(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
-      const years = await AcademicService.getAllYears();
+      const instId = AcademicController.getTenantId(req);
+      const years = await AcademicService.getAllYears(instId);
       return res.status(200).json(ApiResponse.success("Years fetched", years));
     } catch (error) {
       next(error);
@@ -210,9 +236,11 @@ export class AcademicController {
   static async createYear(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
       const { name } = req.body;
-      const year = await AcademicService.createYear(name);
+      const instId = AcademicController.getTenantId(req);
+      const year = await AcademicService.createYear(name, instId);
 
       await logAudit({
+        institutionId: instId,
         userId: req.user?.id,
         action: "YEAR_CREATE",
         details: `Created year: ${name}`,
@@ -228,9 +256,11 @@ export class AcademicController {
   static async updateYear(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
       const { id } = req.params;
-      const year = await AcademicService.updateYear(id, req.body);
+      const instId = AcademicController.getTenantId(req);
+      const year = await AcademicService.updateYear(id, req.body, instId);
 
       await logAudit({
+        institutionId: instId,
         userId: req.user?.id,
         action: "YEAR_UPDATE",
         details: `Updated year ID: ${id}`,
@@ -246,9 +276,11 @@ export class AcademicController {
   static async deleteYear(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
       const { id } = req.params;
-      await AcademicService.deleteYear(id);
+      const instId = AcademicController.getTenantId(req);
+      await AcademicService.deleteYear(id, instId);
 
       await logAudit({
+        institutionId: instId,
         userId: req.user?.id,
         action: "YEAR_DELETE",
         details: `Deleted year ID: ${id}`,
@@ -264,7 +296,8 @@ export class AcademicController {
   // --- Semester ---
   static async getSemesters(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
-      const semesters = await AcademicService.getAllSemesters();
+      const instId = AcademicController.getTenantId(req);
+      const semesters = await AcademicService.getAllSemesters(instId);
       return res.status(200).json(ApiResponse.success("Semesters fetched", semesters));
     } catch (error) {
       next(error);
@@ -274,9 +307,11 @@ export class AcademicController {
   static async createSemester(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
       const { name, number } = req.body;
-      const sem = await AcademicService.createSemester(name, Number(number));
+      const instId = AcademicController.getTenantId(req);
+      const sem = await AcademicService.createSemester(name, Number(number), instId);
 
       await logAudit({
+        institutionId: instId,
         userId: req.user?.id,
         action: "SEMESTER_CREATE",
         details: `Created semester: ${name} (number: ${number})`,
@@ -292,9 +327,11 @@ export class AcademicController {
   static async updateSemester(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
       const { id } = req.params;
-      const sem = await AcademicService.updateSemester(id, req.body);
+      const instId = AcademicController.getTenantId(req);
+      const sem = await AcademicService.updateSemester(id, req.body, instId);
 
       await logAudit({
+        institutionId: instId,
         userId: req.user?.id,
         action: "SEMESTER_UPDATE",
         details: `Updated semester ID: ${id}`,
@@ -310,9 +347,11 @@ export class AcademicController {
   static async deleteSemester(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
       const { id } = req.params;
-      await AcademicService.deleteSemester(id);
+      const instId = AcademicController.getTenantId(req);
+      await AcademicService.deleteSemester(id, instId);
 
       await logAudit({
+        institutionId: instId,
         userId: req.user?.id,
         action: "SEMESTER_DELETE",
         details: `Deleted semester ID: ${id}`,

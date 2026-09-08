@@ -7,7 +7,8 @@ import { logAudit } from "../utils/auditLogger.js";
 export class MappingsController {
   static async getMappings(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
-      const mappings = await MappingsService.getAllMappings();
+      const institutionId = req.user?.institutionId || req.institutionId;
+      const mappings = await MappingsService.getAllMappings(institutionId ? institutionId.toString() : undefined);
       return res.status(200).json(ApiResponse.success("Mappings fetched", mappings));
     } catch (error) {
       next(error);
@@ -16,13 +17,18 @@ export class MappingsController {
 
   static async createMapping(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
-      const mapping = await MappingsService.createMapping(req.body);
+      const institutionId = req.user?.institutionId || req.institutionId;
+      const mapping = await MappingsService.createMapping({
+        ...req.body,
+        institutionId: institutionId ? institutionId.toString() : undefined,
+      });
 
       await logAudit({
         userId: req.user?.id,
         action: "MAPPING_CREATE",
         details: `Created mapping: Faculty ${req.body.facultyId} -> Subject ${req.body.subjectId}`,
         ipAddress: req.ip,
+        institutionId: institutionId ? (institutionId as any) : undefined,
       });
 
       return res.status(201).json(ApiResponse.success("Mapping created", mapping));
@@ -34,13 +40,15 @@ export class MappingsController {
   static async updateMapping(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
       const { id } = req.params;
-      const mapping = await MappingsService.updateMapping(id, req.body);
+      const institutionId = req.user?.institutionId || req.institutionId;
+      const mapping = await MappingsService.updateMapping(id, req.body, institutionId ? institutionId.toString() : undefined);
 
       await logAudit({
         userId: req.user?.id,
         action: "MAPPING_UPDATE",
         details: `Updated mapping ID: ${id}`,
         ipAddress: req.ip,
+        institutionId: institutionId ? (institutionId as any) : undefined,
       });
 
       return res.status(200).json(ApiResponse.success("Mapping updated", mapping));
@@ -52,13 +60,15 @@ export class MappingsController {
   static async deleteMapping(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
       const { id } = req.params;
-      await MappingsService.deleteMapping(id);
+      const institutionId = req.user?.institutionId || req.institutionId;
+      await MappingsService.deleteMapping(id, institutionId ? institutionId.toString() : undefined);
 
       await logAudit({
         userId: req.user?.id,
         action: "MAPPING_DELETE",
         details: `Deleted mapping ID: ${id}`,
         ipAddress: req.ip,
+        institutionId: institutionId ? (institutionId as any) : undefined,
       });
 
       return res.status(200).json(ApiResponse.success("Mapping deleted successfully"));
@@ -67,3 +77,4 @@ export class MappingsController {
     }
   }
 }
+export default MappingsController;

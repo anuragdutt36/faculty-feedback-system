@@ -1,6 +1,7 @@
 import mongoose, { Schema, Document } from "mongoose";
 
 export interface IFacultySubjectMapping extends Document {
+  institutionId?: mongoose.Types.ObjectId; // References Institution
   facultyId: mongoose.Types.ObjectId; // References FacultyProfile
   subjectId: mongoose.Types.ObjectId; // References Subject
   courseId: mongoose.Types.ObjectId; // References Course
@@ -14,6 +15,7 @@ export interface IFacultySubjectMapping extends Document {
 
 const FacultySubjectMappingSchema = new Schema<IFacultySubjectMapping>(
   {
+    institutionId: { type: Schema.Types.ObjectId, ref: "Institution", index: true },
     facultyId: { type: Schema.Types.ObjectId, ref: "FacultyProfile", required: true },
     subjectId: { type: Schema.Types.ObjectId, ref: "Subject", required: true },
     courseId: { type: Schema.Types.ObjectId, ref: "Course", required: true },
@@ -25,10 +27,9 @@ const FacultySubjectMappingSchema = new Schema<IFacultySubjectMapping>(
   { timestamps: true }
 );
 
-// Compound index for mapping uniqueness
+// Compound index for mapping uniqueness per institution
 FacultySubjectMappingSchema.index(
-  { facultyId: 1, subjectId: 1, courseId: 1, branchId: 1, semester: 1, academicYear: 1 },
-  { unique: true }
+  { facultyId: 1, subjectId: 1, courseId: 1, branchId: 1, semester: 1, academicYear: 1, institutionId: 1 }
 );
 
 export const FacultySubjectMapping = mongoose.model<IFacultySubjectMapping>(

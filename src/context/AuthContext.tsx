@@ -6,7 +6,11 @@ export interface UserProfile {
   id: string;
   username: string;
   name: string;
+  institutionId?: string;
   rollNumber?: string;
+  employeeId?: string;
+  designation?: string;
+  department?: string;
   role: Role;
   course?: string;
   branch?: string;
@@ -19,12 +23,30 @@ interface AuthContextType {
   isAuthenticated: boolean;
   user: UserProfile | null;
   login: (username: string, password?: string) => Promise<void>;
+  staffLogin: (email: string, password: string) => Promise<void>;
   googleLogin: (idToken: string) => Promise<void>;
   logout: () => void;
   loading: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+const buildUserProfile = (u: any, prof: any): UserProfile => ({
+  id: u.id,
+  username: u.username,
+  institutionId: u.institutionId || prof?.institutionId,
+  name: prof?.name || (u.role === "admin" ? "System Admin" : "User"),
+  rollNumber: prof?.enrollmentNo || (u.username ? (u.username.match(/\d+/)?.[0] || "") : ""),
+  employeeId: prof?.employeeId,
+  designation: prof?.designation,
+  department: prof?.department,
+  role: u.role as Role,
+  course: prof?.courseId?.name || prof?.course,
+  branch: prof?.branchId?.code || prof?.branchId?.name || prof?.branch,
+  semester: prof?.semester,
+  year: prof?.year,
+  academicSession: prof?.academicSession || "2025-26",
+});
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<UserProfile | null>(null);
@@ -34,75 +56,59 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const response = await authService.getMe();
       if (response && response.success) {
-        const u = response.data.user;
-        const prof = response.data.profile;
-        const newUser: UserProfile = {
-          id: u.id,
-          username: u.username,
-          name: prof?.name || "Student",
-          rollNumber: prof?.enrollmentNo || (u.username ? (u.username.match(/\d+/)?.[0] || "") : ""),
-          role: u.role as Role,
-          course: prof?.courseId?.name || prof?.course,
-          branch: prof?.branchId?.code || prof?.branchId?.name || prof?.branch,
-          semester: prof?.semester,
-          year: prof?.year,
-          academicSession: prof?.academicSession || "2025-26",
-        };
+        const newUser = buildUserProfile(response.data.user, response.data.profile);
         setUser(newUser);
-        localStorage.setItem("knit-user", JSON.stringify(newUser));
+        localStorage.setItem("ffms-auth-user", JSON.stringify(newUser));
+        if (newUser.institutionId) {
+          sessionStorage.setItem("currentInstitutionId", newUser.institutionId);
+        }
       } else {
         logout();
       }
     } catch {
-      // If token is invalid/expired, logout; otherwise keep user if cached
-      const token = localStorage.getItem("knit-auth-token");
-      if (!token) logout();
+      setUser(null);
+      localStorage.removeItem("ffms-auth-user");
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    const token = localStorage.getItem("knit-auth-token");
-    const cachedUser = localStorage.getItem("knit-user");
-    if (cachedUser) {
+    // Clear legacy keys if present
+    localStorage.removeItem("knit-user");
+
+    const cached = localStorage.getItem("ffms-auth-user");
+    if (cached) {
       try {
-        setUser(JSON.parse(cachedUser));
-        setLoading(false);
-      } catch (e) {}
+        const parsed = JSON.parse(cached);
+        setUser(parsed);
+        if (parsed.institutionId) {
+          sessionStorage.setItem("currentInstitutionId", parsed.institutionId);
+        }
+      } catch {
+        localStorage.removeItem("ffms-auth-user");
+      }
     }
-    
-    if (token) {
-      fetchProfile();
-    } else {
-      setLoading(false);
-    }
+
+    // Always attempt to fetch profile to verify HttpOnly cookie session
+    fetchProfile();
   }, []);
 
+  // Admin/Platform login
   const login = async (username: string, password?: string) => {
     setLoading(true);
     try {
       const response = await authService.login(username, password);
       if (response && response.success) {
-        localStorage.setItem("knit-auth-token", response.data.accessToken);
-        localStorage.setItem("knit-refresh-token", response.data.refreshToken);
-        
-        const u = response.data.user;
-        const prof = response.data.profile;
-        const newUser: UserProfile = {
-          id: u.id,
-          username: u.username,
-          name: prof?.name || "System Admin",
-          rollNumber: prof?.enrollmentNo || (u.username ? (u.username.match(/\d+/)?.[0] || "") : ""),
-          role: u.role as Role,
-          course: prof?.courseId?.name || prof?.course,
-          branch: prof?.branchId?.code || prof?.branchId?.name || prof?.branch,
-          semester: prof?.semester,
-          year: prof?.year,
-          academicSession: prof?.academicSession || "2025-26",
-        };
+        if (response.data?.accessToken) {
+          localStorage.setItem("accessToken", response.data.accessToken);
+        }
+        const newUser = buildUserProfile(response.data.user, response.data.profile);
         setUser(newUser);
-        localStorage.setItem("knit-user", JSON.stringify(newUser));
+        localStorage.setItem("ffms-auth-user", JSON.stringify(newUser));
+        if (newUser.institutionId) {
+          sessionStorage.setItem("currentInstitutionId", newUser.institutionId);
+        }
       } else {
         throw new Error(response.message || "Login failed");
       }
@@ -113,32 +119,46 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  // Staff login: Faculty, HOD, Dean — NO Google OAuth, dedicated endpoint
+  const staffLogin = async (email: string, password: string) => {
+    setLoading(true);
+    try {
+      const response = await authService.staffLogin(email, password);
+      if (response && response.success) {
+        if (response.data?.accessToken) {
+          localStorage.setItem("accessToken", response.data.accessToken);
+        }
+        const newUser = buildUserProfile(response.data.user, response.data.profile);
+        setUser(newUser);
+        localStorage.setItem("ffms-auth-user", JSON.stringify(newUser));
+        if (newUser.institutionId) {
+          sessionStorage.setItem("currentInstitutionId", newUser.institutionId);
+        }
+      } else {
+        throw new Error(response.message || "Login failed. Please check your credentials.");
+      }
+    } catch (err: any) {
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Student Google OAuth
   const googleLogin = async (idToken: string) => {
     setLoading(true);
     try {
       const response = await authService.googleLogin(idToken);
       if (response && response.success) {
-        localStorage.setItem("knit-auth-token", response.data.accessToken);
-        localStorage.setItem("knit-refresh-token", response.data.refreshToken);
-        
-        const u = response.data.user;
-        const prof = response.data.profile;
-        const newUser: UserProfile = {
-          id: u.id,
-          username: u.username,
-          name: prof?.name || "Student",
-          rollNumber: prof?.enrollmentNo || (u.username ? (u.username.match(/\d+/)?.[0] || "") : ""),
-          role: u.role as Role,
-          course: prof?.courseId?.name || prof?.course,
-          branch: prof?.branchId?.code || prof?.branchId?.name || prof?.branch,
-          semester: prof?.semester,
-          year: prof?.year,
-          academicSession: prof?.academicSession || "2025-26",
-        };
-        console.log("[DEBUG] User profile fetched for:", u.username);
-        console.log("[DEBUG] Roll-number mapping applied:", newUser.rollNumber);
+        if (response.data?.accessToken) {
+          localStorage.setItem("accessToken", response.data.accessToken);
+        }
+        const newUser = buildUserProfile(response.data.user, response.data.profile);
         setUser(newUser);
-        localStorage.setItem("knit-user", JSON.stringify(newUser));
+        localStorage.setItem("ffms-auth-user", JSON.stringify(newUser));
+        if (newUser.institutionId) {
+          sessionStorage.setItem("currentInstitutionId", newUser.institutionId);
+        }
       } else {
         throw new Error(response.message || "Google Authentication failed");
       }
@@ -150,14 +170,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const logout = () => {
-    const refreshToken = localStorage.getItem("knit-refresh-token");
-    if (refreshToken) {
-      authService.logout(refreshToken).catch(() => {});
-    }
+    authService.logout("").catch(() => {});
     setUser(null);
+    localStorage.removeItem("ffms-auth-user");
     localStorage.removeItem("knit-user");
-    localStorage.removeItem("knit-auth-token");
-    localStorage.removeItem("knit-refresh-token");
+    localStorage.removeItem("accessToken");
   };
 
   return (
@@ -166,6 +183,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isAuthenticated: !!user,
         user,
         login,
+        staffLogin,
         googleLogin,
         logout,
         loading,

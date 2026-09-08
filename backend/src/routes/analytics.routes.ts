@@ -4,8 +4,8 @@ import { authenticate, authorize } from "../middleware/auth.js";
 
 const router = Router();
 
-// Admin only
-router.get("/dashboard", authenticate, authorize("admin"), AnalyticsController.getDashboardMetrics);
-router.get("/ranking", authenticate, authorize("admin"), AnalyticsController.getRanking);
+// Admin, Dean, and HOD
+router.get("/dashboard", authenticate, authorize("admin", "dean", "hod"), AnalyticsController.getDashboardMetrics);
+router.get("/ranking", authenticate, authorize("admin", "dean", "hod"), AnalyticsController.getRanking);
 
 export default router;

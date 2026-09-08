@@ -1,6 +1,7 @@
 import { apiFetch } from "./api.js";
 
 export const authService = {
+  // Admin/Platform login (username + password)
   login: async (username: string, password?: string) => {
     return await apiFetch("/auth/login", {
       method: "POST",
@@ -8,6 +9,15 @@ export const authService = {
     });
   },
 
+  // Staff login: Faculty, HOD, Dean — manual email+password, NO Google OAuth
+  staffLogin: async (email: string, password: string) => {
+    return await apiFetch("/auth/staff/login", {
+      method: "POST",
+      body: JSON.stringify({ email, password }),
+    });
+  },
+
+  // Student Google OAuth
   googleLogin: async (idToken: string) => {
     return await apiFetch("/auth/google", {
       method: "POST",

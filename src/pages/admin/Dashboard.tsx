@@ -10,7 +10,6 @@ import {
   AreaChart, Area, BarChart, Bar,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend
 } from "recharts";
-import { motion } from "framer-motion";
 import { useAuth } from "../../context/AuthContext.js";
 import { useTheme } from "../../context/ThemeContext.js";
 import { useSettings } from "../../context/SettingsContext.js";
@@ -114,30 +113,13 @@ export const AdminDashboard: React.FC = () => {
     { label: "Total Semesters", value: metrics.totalSemesters, sub: "Active evaluation sems", icon: BookOpen, color: "bg-pink-500" }
   ];
 
-  const staggerContainer = {
-    hidden: { opacity: 0 },
-    show: {
-      opacity: 1,
-      transition: { staggerChildren: 0.1, delayChildren: 0.1 }
-    }
-  };
-  const fadeUp = {
-    hidden: { opacity: 0, y: 20 },
-    show: { opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" } }
-  };
-
   return (
-    <motion.div 
-      variants={staggerContainer}
-      initial="hidden"
-      animate="show"
-      className="space-y-4 sm:space-y-6 w-full max-w-full overflow-x-hidden"
-    >
+    <div className="space-y-4 sm:space-y-6 w-full max-w-full overflow-x-hidden">
       {/* Title Header */}
-      <motion.div variants={fadeUp} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h1 className={`text-xl sm:text-2xl font-bold ${textPrimary}`} style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-            Welcome, {user?.name || "Admin"} 👋
+            Welcome, {user?.name || "Admin"}
           </h1>
           <p className={`text-xs sm:text-sm mt-0.5 ${textSub}`}>
             Academic Session {"2026-27"} feedback status &nbsp;·&nbsp; 
@@ -148,7 +130,7 @@ export const AdminDashboard: React.FC = () => {
         <div className="flex items-center gap-2">
           <button 
             onClick={loadDashboardData}
-            className={`flex-1 sm:flex-none justify-center flex items-center gap-1.5 sm:gap-2 px-3 sm:px-3.5 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-semibold border transition-all hover:scale-105 cursor-pointer ${
+            className={`flex-1 sm:flex-none justify-center flex items-center gap-1.5 sm:gap-2 px-3 sm:px-3.5 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-semibold border transition-colors cursor-pointer ${
               dark ? "border-white/10 bg-white/5 text-white" : "border-[#0B3D91]/10 bg-white text-[#0D1B3E]"
             }`}
           >
@@ -156,12 +138,12 @@ export const AdminDashboard: React.FC = () => {
           </button>
           <button
             onClick={() => navigate("/admin/sessions")}
-            className="flex-1 sm:flex-none justify-center flex items-center gap-1.5 sm:gap-2 px-3 sm:px-3.5 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-semibold bg-[#0B3D91] text-white hover:bg-[#0a348a] transition-all shadow-md shadow-[#0B3D91]/25 cursor-pointer border-0"
+            className="flex-1 sm:flex-none justify-center flex items-center gap-1.5 sm:gap-2 px-3 sm:px-3.5 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-semibold bg-[#0B3D91] text-white hover:bg-[#0a348a] transition-colors shadow-md shadow-[#0B3D91]/25 cursor-pointer border-0"
           >
             <Plus size={14} /> New Session
           </button>
         </div>
-      </motion.div>
+      </div>
 
       {loading ? (
         <div className="flex flex-col items-center justify-center py-32">
@@ -171,11 +153,11 @@ export const AdminDashboard: React.FC = () => {
       ) : (
         <>
           {/* Metric Cards (2-column on mobile, 6-column on xl desktop) */}
-          <motion.div variants={fadeUp} className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-2.5 sm:gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-2.5 sm:gap-4">
             {cards.map(({ label, value, sub, icon: Icon, color }) => (
               <div
                 key={label}
-                className={`rounded-2xl p-4 sm:p-5 border transition-all hover:shadow-lg hover:-translate-y-0.5 cursor-default shadow-sm ${
+                className={`rounded-2xl p-4 sm:p-5 border transition-colors cursor-default shadow-sm ${
                   dark ? "bg-white/5 border-white/10" : "bg-white border-[#0B3D91]/10"
                 }`}
               >
@@ -189,10 +171,10 @@ export const AdminDashboard: React.FC = () => {
                 <div className={`text-[10px] sm:text-xs ${textSub}`}>{sub}</div>
               </div>
             ))}
-          </motion.div>
+          </div>
 
           {/* Secondary stats row */}
-          <motion.div variants={fadeUp} className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
             <div className={`flex items-center justify-between p-4 sm:p-5 rounded-2xl border ${cardBg}`}>
               <div className="flex items-center gap-3 sm:gap-4">
                 <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-emerald-500 flex items-center justify-center text-white shrink-0"><Activity size={20} className="sm:w-[22px] sm:h-[22px]" /></div>
@@ -211,10 +193,10 @@ export const AdminDashboard: React.FC = () => {
                 </div>
               </div>
             </div>
-          </motion.div>
+          </div>
 
           {/* Charts */}
-          <motion.div variants={fadeUp} className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4">
             <div className={`lg:col-span-2 rounded-2xl border p-4 sm:p-5 shadow-sm min-w-0 ${cardBg}`}>
               <div className="flex items-center justify-between mb-4 sm:mb-5 gap-2">
                 <div>
@@ -268,10 +250,10 @@ export const AdminDashboard: React.FC = () => {
                 </div>
               )}
             </div>
-          </motion.div>
+          </div>
 
           {/* Bottom Grid */}
-          <motion.div variants={fadeUp} className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4">
             {/* Rating Distribution */}
             <div className={`rounded-2xl border p-5 shadow-sm ${cardBg}`}>
               <h3 className={`font-semibold text-sm mb-5 ${textPrimary}`} style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Rating Distribution</h3>
@@ -315,7 +297,7 @@ export const AdminDashboard: React.FC = () => {
                   <button
                     key={label}
                     onClick={() => navigate(path)}
-                    className={`flex flex-col items-center gap-2 p-3 rounded-xl border text-center text-xs font-semibold transition-all hover:scale-105 hover:shadow-md cursor-pointer ${
+                    className={`flex flex-col items-center gap-2 p-3 rounded-xl border text-center text-xs font-semibold transition-colors cursor-pointer ${
                       dark ? "border-white/10 bg-white/5 text-white hover:bg-white/10" : "border-[#0B3D91]/8 bg-[#F0F4FA] text-[#0D1B3E] hover:bg-white"
                     }`}
                   >
@@ -350,7 +332,7 @@ export const AdminDashboard: React.FC = () => {
                 </div>
               ))}
             </div>
-          </motion.div>
+          </div>
 
           {/* Audit Trail Snippet */}
           <div className={`rounded-2xl border p-5 shadow-sm ${cardBg} mt-4`}>
@@ -379,10 +361,10 @@ export const AdminDashboard: React.FC = () => {
         </>
       )}
 
-      <motion.div variants={fadeUp} className={`text-center text-[10px] pb-2 ${textSub}`}>
+      <div className={`text-center text-[10px] pb-2 ${textSub}`}>
         {systemName} v2.0.0 &nbsp;·&nbsp; {instituteName} &nbsp;·&nbsp; <span className="text-emerald-500">All systems operational</span>
-      </motion.div>
-    </motion.div>
+      </div>
+    </div>
   );
 };
 

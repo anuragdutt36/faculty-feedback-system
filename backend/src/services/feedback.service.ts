@@ -1,4 +1,5 @@
 import crypto from "crypto";
+import mongoose from "mongoose";
 import { ActiveSubmissionToken, FeedbackResponse, FeedbackSession, SubmissionStatus } from "../models/feedback.model.js";
 import { SessionsService } from "./sessions.service.js";
 import { FacultySubjectMapping } from "../models/mapping.model.js";
@@ -12,17 +13,28 @@ export class FeedbackService {
     studentUserId: string,
     feedbackSessionId: string,
     subjectId: string,
-    facultyId: string
+    facultyId: string,
+    institutionId?: string
   ) {
-    const student = await StudentProfile.findOne({ userId: studentUserId })
+    const studentFilter: any = { userId: studentUserId };
+    if (institutionId) {
+      studentFilter.institutionId = new mongoose.Types.ObjectId(institutionId);
+    }
+    const student = await StudentProfile.findOne(studentFilter)
       .populate("courseId")
       .populate("branchId");
     if (!student) {
       throw new CustomError("Student profile not found", 404);
     }
 
+    const instId = institutionId || student.institutionId?.toString();
+
     // Verify session exists and is active
-    const session = await FeedbackSession.findById(feedbackSessionId)
+    const sessFilter: any = { _id: feedbackSessionId };
+    if (instId) {
+      sessFilter.institutionId = new mongoose.Types.ObjectId(instId);
+    }
+    const session = await FeedbackSession.findOne(sessFilter)
       .populate("courseId")
       .populate("branchId");
     if (!session || session.status !== "active") {
@@ -54,7 +66,7 @@ export class FeedbackService {
     const targetSemMatches = targetSemester !== null && sessSemNum !== null && sessSemNum === targetSemester;
 
     // Check if session ID matches activeSessions from student dashboard OR passes direct equivalence
-    const activeSessions = await SessionsService.getStudentActiveSessions(studentUserId);
+    const activeSessions = await SessionsService.getStudentActiveSessions(studentUserId, instId);
     const inDashboardSessions = activeSessions.some(s => {
       const sId = String(s.session.id || (s.session as any)?._id || "").trim();
       return sId === String(feedbackSessionId).trim();
@@ -71,6 +83,7 @@ export class FeedbackService {
       studentId: student._id,
       feedbackSessionId,
       subjectId,
+      ...(instId ? { institutionId: new mongoose.Types.ObjectId(instId) } : {}),
     });
 
     if (existingSubmission && existingSubmission.submitted) {
@@ -80,6 +93,7 @@ export class FeedbackService {
     // Lock submission: mark as submitted before generating token
     if (!existingSubmission) {
       await SubmissionStatus.create({
+        institutionId: instId ? new mongoose.Types.ObjectId(instId) : undefined,
         studentId: student._id,
         feedbackSessionId,
         subjectId,
@@ -87,6 +101,9 @@ export class FeedbackService {
         submittedAt: new Date(),
       });
     } else {
+      if (instId && !existingSubmission.institutionId) {
+        existingSubmission.institutionId = new mongoose.Types.ObjectId(instId) as any;
+      }
       existingSubmission.submitted = true;
       existingSubmission.submittedAt = new Date();
       await existingSubmission.save();
@@ -98,6 +115,7 @@ export class FeedbackService {
     // Store in active tokens pool with 5 minutes expiry
     const expiry = new Date(Date.now() + 5 * 60 * 1000); // 5 min
     await ActiveSubmissionToken.create({
+      institutionId: instId ? new mongoose.Types.ObjectId(instId) : undefined,
       token,
       feedbackSessionId,
       subjectId,
@@ -119,7 +137,8 @@ export class FeedbackService {
       throw new CustomError("Invalid, expired, or double-submitted token", 403);
     }
 
-    const dbSettings = await SystemSettings.findOne();
+    const settingsFilter = activeToken.institutionId ? { institutionId: activeToken.institutionId } : {};
+    const dbSettings = await SystemSettings.findOne(settingsFilter);
     const isAnonymous = dbSettings ? dbSettings.anonymousFeedback : true;
 
     // Fetch FeedbackSession to store branch, semester, and academic year for reporting
@@ -128,8 +147,11 @@ export class FeedbackService {
       throw new CustomError("Associated feedback session not found", 404);
     }
 
+    const instId = session.institutionId || activeToken.institutionId;
+
     // 2. Write response
     await FeedbackResponse.create({
+      institutionId: instId,
       feedbackSessionId: activeToken.feedbackSessionId,
       subjectId: activeToken.subjectId,
       facultyId: activeToken.facultyId,
@@ -162,14 +184,24 @@ export class FeedbackService {
     } catch (_) {}
   }
 
-  static async getStudentHistory(studentUserId: string) {
-    const student = await StudentProfile.findOne({ userId: studentUserId });
+  static async getStudentHistory(studentUserId: string, institutionId?: string) {
+    const studentFilter: any = { userId: studentUserId };
+    if (institutionId) {
+      studentFilter.institutionId = new mongoose.Types.ObjectId(institutionId);
+    }
+    const student = await StudentProfile.findOne(studentFilter);
     if (!student) {
       throw new CustomError("Student profile not found", 404);
     }
 
+    const instId = student.institutionId?.toString() || institutionId;
+    const subFilter: any = { studentId: student._id, submitted: true };
+    if (instId) {
+      subFilter.institutionId = new mongoose.Types.ObjectId(instId);
+    }
+
     // Find submission records for this student
-    const submissions = await SubmissionStatus.find({ studentId: student._id, submitted: true })
+    const submissions = await SubmissionStatus.find(subFilter)
       .populate("feedbackSessionId")
       .populate("subjectId");
 
@@ -182,13 +214,18 @@ export class FeedbackService {
 
       if (!session || !subject) continue;
 
-      // Find mapped faculty for the subject at that session's semester
-      const mapping = await FacultySubjectMapping.findOne({
+      const mapFilter: any = {
         subjectId: subject._id,
         courseId: session.courseId || student.courseId,
         branchId: session.branchId || student.branchId,
         semester: session.semester,
-      }).populate("facultyId");
+      };
+      if (instId) {
+        mapFilter.institutionId = new mongoose.Types.ObjectId(instId);
+      }
+
+      // Find mapped faculty for the subject at that session's semester
+      const mapping = await FacultySubjectMapping.findOne(mapFilter).populate("facultyId");
 
       history.push({
         id: sub._id,
@@ -203,3 +240,4 @@ export class FeedbackService {
     return history;
   }
 }
+export default FeedbackService;

@@ -1,13 +1,13 @@
 import mongoose from "mongoose";
-import { FeedbackResponse, FeedbackSession, Question, SubmissionStatus } from "../models/feedback.model.js";
+import { FeedbackResponse, FeedbackSession, SubmissionStatus } from "../models/feedback.model.js";
 import { FacultyProfile, StudentProfile } from "../models/profiles.model.js";
 import { Branch, Subject, Course, Year, Semester } from "../models/academic.model.js";
 import { FacultySubjectMapping } from "../models/mapping.model.js";
-import { CustomError } from "../middleware/errorHandler.js";
 
 export class AnalyticsService {
-  static async getOverviewMetrics(branchIdFilter?: string) {
-    const matchQuery: any = {};
+  static async getOverviewMetrics(branchIdFilter?: string, institutionId?: string) {
+    const instQuery = institutionId ? { institutionId: new mongoose.Types.ObjectId(institutionId) } : {};
+    const matchQuery: any = { ...instQuery };
     if (branchIdFilter) {
       matchQuery.branchId = new mongoose.Types.ObjectId(branchIdFilter);
     }
@@ -16,10 +16,10 @@ export class AnalyticsService {
     const totalFaculty = await FacultyProfile.countDocuments(matchQuery);
     const totalStudents = await StudentProfile.countDocuments(matchQuery);
     const totalSubjects = await Subject.countDocuments(matchQuery);
-    const totalCourses = await Course.countDocuments({});
-    const totalYears = await Year.countDocuments({});
-    const totalSemesters = await Semester.countDocuments({});
-    
+    const totalCourses = await Course.countDocuments(instQuery);
+    const totalYears = await Year.countDocuments(instQuery);
+    const totalSemesters = await Semester.countDocuments(instQuery);
+
     // Active & Closed Sessions
     const activeSessions = await FeedbackSession.countDocuments({
       ...matchQuery,
@@ -32,10 +32,15 @@ export class AnalyticsService {
     });
 
     // Total Departments
-    const totalBranches = await Branch.countDocuments(branchIdFilter ? { _id: branchIdFilter } : {});
+    const branchQuery: any = { ...instQuery };
+    if (branchIdFilter) {
+      branchQuery._id = new mongoose.Types.ObjectId(branchIdFilter);
+    }
+    const totalBranches = await Branch.countDocuments(branchQuery);
 
     // Average rating calculation from real FeedbackResponse documents
     const avgResult = await FeedbackResponse.aggregate([
+      { $match: instQuery },
       { $unwind: "$ratings" },
       { $group: { _id: null, avgRating: { $avg: "$ratings.rating" } } }
     ]);
@@ -44,17 +49,18 @@ export class AnalyticsService {
     // Completion Rate calculation:
     // Total submissions / Total expected submissions
     let totalExpected = 0;
-    const sessions = await FeedbackSession.find({ status: "active" });
+    const sessions = await FeedbackSession.find({ status: "active", ...instQuery });
     for (const session of sessions) {
       if (branchIdFilter && session.branchId.toString() !== branchIdFilter) {
         continue;
       }
-      
+
       const studentCount = await StudentProfile.countDocuments({
         courseId: session.courseId,
         branchId: session.branchId,
         year: session.year,
         semester: session.semester,
+        ...instQuery,
       });
 
       const mappingCount = await FacultySubjectMapping.countDocuments({
@@ -62,20 +68,20 @@ export class AnalyticsService {
         branchId: session.branchId,
         semester: session.semester,
         status: "active",
+        ...instQuery,
       });
 
       totalExpected += studentCount * mappingCount;
     }
 
-    const totalSubmissions = await SubmissionStatus.countDocuments(
-      branchIdFilter
-        ? {
-            studentId: {
-              $in: await StudentProfile.find({ branchId: branchIdFilter }).distinct("_id"),
-            },
-          }
-        : {}
-    );
+    const submissionQuery: any = { ...instQuery };
+    if (branchIdFilter) {
+      submissionQuery.studentId = {
+        $in: await StudentProfile.find({ branchId: branchIdFilter, ...instQuery }).distinct("_id"),
+      };
+    }
+
+    const totalSubmissions = await SubmissionStatus.countDocuments(submissionQuery);
 
     const completionRate = totalExpected > 0 ? Math.round((totalSubmissions / totalExpected) * 100) : 0;
 
@@ -94,11 +100,12 @@ export class AnalyticsService {
     };
   }
 
-  static async getRatingDistribution(branchIdFilter?: string) {
-    const matchQuery: any = {};
+  static async getRatingDistribution(branchIdFilter?: string, institutionId?: string) {
+    const instQuery = institutionId ? { institutionId: new mongoose.Types.ObjectId(institutionId) } : {};
+    const matchQuery: any = { ...instQuery };
     if (branchIdFilter) {
       matchQuery.facultyId = {
-        $in: await FacultyProfile.find({ branchId: branchIdFilter }).distinct("_id"),
+        $in: await FacultyProfile.find({ branchId: branchIdFilter, ...instQuery }).distinct("_id"),
       };
     }
 
@@ -140,8 +147,9 @@ export class AnalyticsService {
     });
   }
 
-  static async getSemesterComparisonTrend(branchIdFilter?: string) {
-    const sessionMatch: any = {};
+  static async getSemesterComparisonTrend(branchIdFilter?: string, institutionId?: string) {
+    const instQuery = institutionId ? { institutionId: new mongoose.Types.ObjectId(institutionId) } : {};
+    const sessionMatch: any = { ...instQuery };
     if (branchIdFilter) {
       sessionMatch.branchId = new mongoose.Types.ObjectId(branchIdFilter);
     }
@@ -154,7 +162,7 @@ export class AnalyticsService {
 
     const trend = [];
     for (const session of sessions) {
-      const responsesMatch: any = { feedbackSessionId: session._id };
+      const responsesMatch: any = { feedbackSessionId: session._id, ...instQuery };
 
       const ratingsAvg = await FeedbackResponse.aggregate([
         { $match: responsesMatch },
@@ -169,7 +177,7 @@ export class AnalyticsService {
       ]);
 
       const avg = ratingsAvg[0] ? Math.round(ratingsAvg[0].avgRating * 100) : 0;
-      const count = await SubmissionStatus.countDocuments({ feedbackSessionId: session._id });
+      const count = await SubmissionStatus.countDocuments({ feedbackSessionId: session._id, ...instQuery });
 
       trend.push({
         sem: `${session.name.substring(0, 8)} ${session.academicYear ? session.academicYear.substring(2) : ""}`,
@@ -181,21 +189,16 @@ export class AnalyticsService {
     return trend;
   }
 
-  static async getDepartmentPerformance() {
-    const targetCodes = ["MCA", "CSE", "IT", "ECE", "EE", "ME", "CE"];
-    const branches = await Branch.find({ code: { $in: targetCodes }, status: "active" });
+  static async getDepartmentPerformance(institutionId?: string) {
+    const instQuery = institutionId ? { institutionId: new mongoose.Types.ObjectId(institutionId) } : {};
+    const branches = await Branch.find({ status: "active", ...instQuery });
     const performance = [];
 
-    const branchMap = new Map(branches.map(b => [b.code, b]));
+    for (const branch of branches) {
+      const facultyIds = await FacultyProfile.find({ branchId: branch._id, ...instQuery }).distinct("_id");
 
-    for (const code of targetCodes) {
-      const branch = branchMap.get(code);
-      if (!branch) continue;
-
-      const facultyIds = await FacultyProfile.find({ branchId: branch._id }).distinct("_id");
-      
       const result = await FeedbackResponse.aggregate([
-        { $match: { facultyId: { $in: facultyIds } } },
+        { $match: { facultyId: { $in: facultyIds }, ...instQuery } },
         { $unwind: "$ratings" },
         {
           $group: {
@@ -215,8 +218,9 @@ export class AnalyticsService {
     return performance;
   }
 
-  static async getFacultyRanking(branchIdFilter?: string) {
-    const matchQuery: any = {};
+  static async getFacultyRanking(branchIdFilter?: string, institutionId?: string) {
+    const instQuery = institutionId ? { institutionId: new mongoose.Types.ObjectId(institutionId) } : {};
+    const matchQuery: any = { ...instQuery };
     if (branchIdFilter) {
       matchQuery.branchId = new mongoose.Types.ObjectId(branchIdFilter);
     }
@@ -226,7 +230,7 @@ export class AnalyticsService {
 
     for (const faculty of facultyList) {
       const results = await FeedbackResponse.aggregate([
-        { $match: { facultyId: faculty._id } },
+        { $match: { facultyId: faculty._id, ...instQuery } },
         { $unwind: "$ratings" },
         {
           $group: {
@@ -255,3 +259,4 @@ export class AnalyticsService {
     return rankings.sort((a, b) => b.rating - a.rating);
   }
 }
+export default AnalyticsService;

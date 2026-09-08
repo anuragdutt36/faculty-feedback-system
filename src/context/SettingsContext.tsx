@@ -5,6 +5,8 @@ interface SettingsContextProps {
   systemName: string;
   instituteName: string;
   logoUrl: string;
+  campusImageUrl: string;
+  campusImages: { url: string; publicId?: string; order?: number }[];
   googleLoginEnabled: boolean;
   anonymousFeedback: boolean;
   autoActivateBasedOnDate: boolean;
@@ -13,9 +15,11 @@ interface SettingsContextProps {
 }
 
 const SettingsContext = createContext<SettingsContextProps>({
-  systemName: "KNIT",
-  instituteName: "Kamla Nehru Institute of Technology",
+  systemName: "Faculty Feedback",
+  instituteName: "Institution",
   logoUrl: "",
+  campusImageUrl: "",
+  campusImages: [],
   googleLoginEnabled: true,
   anonymousFeedback: true,
   autoActivateBasedOnDate: true,
@@ -26,9 +30,18 @@ const SettingsContext = createContext<SettingsContextProps>({
 export const useSettings = () => useContext(SettingsContext);
 
 export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [systemName, setSystemName] = useState(() => localStorage.getItem("systemName") || "KNIT");
-  const [instituteName, setInstituteName] = useState(() => localStorage.getItem("instituteName") || "Kamla Nehru Institute of Technology");
-  const [logoUrl, setLogoUrl] = useState(() => localStorage.getItem("logoUrl") || "");
+  // Clean up any legacy un-scoped global keys that might leak across tenants
+  useEffect(() => {
+    ["logoUrl", "campusImageUrl", "campusImages", "systemName", "instituteName"].forEach((k) => {
+      localStorage.removeItem(k);
+    });
+  }, []);
+
+  const [systemName, setSystemName] = useState("Faculty Feedback");
+  const [instituteName, setInstituteName] = useState("Institution");
+  const [logoUrl, setLogoUrl] = useState("");
+  const [campusImageUrl, setCampusImageUrl] = useState("");
+  const [campusImages, setCampusImages] = useState<{ url: string; publicId?: string; order?: number }[]>([]);
   const [googleLoginEnabled, setGoogleLoginEnabled] = useState(true);
   const [anonymousFeedback, setAnonymousFeedback] = useState(true);
   const [autoActivateBasedOnDate, setAutoActivateBasedOnDate] = useState(true);
@@ -38,21 +51,26 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     try {
       const res = await settingsService.getSettings();
       if (res?.success && res.data) {
-        setSystemName(res.data.systemName);
-        setInstituteName(res.data.instituteName);
+        setSystemName(res.data.systemName || "Faculty Feedback");
+        setInstituteName(res.data.instituteName || "Institution");
         setLogoUrl(res.data.logoUrl || "");
+        setCampusImageUrl(res.data.campusImageUrl || "");
+        setCampusImages(res.data.campusImages || []);
         setGoogleLoginEnabled(res.data.googleLoginEnabled ?? true);
         setAnonymousFeedback(res.data.anonymousFeedback ?? true);
         setAutoActivateBasedOnDate(res.data.autoActivateBasedOnDate ?? true);
+
+        // Store only in tenant-scoped session cache
+        const tenantKey = sessionStorage.getItem("currentInstitutionSlug") || sessionStorage.getItem("currentInstitutionId") || "";
+        if (tenantKey) {
+          sessionStorage.setItem(`tenant_${tenantKey}_logo`, res.data.logoUrl || "");
+          sessionStorage.setItem(`tenant_${tenantKey}_name`, res.data.instituteName || "");
+        }
         
-        localStorage.setItem("systemName", res.data.systemName);
-        localStorage.setItem("instituteName", res.data.instituteName);
-        localStorage.setItem("logoUrl", res.data.logoUrl || "");
-        
-        document.title = `${res.data.systemName} Faculty Feedback System`;
+        document.title = `${res.data.systemName || "Faculty Feedback"} System`;
       }
     } catch (error) {
-      console.error("Failed to load global settings", error);
+      console.error("Failed to load tenant settings", error);
     } finally {
       setLoading(false);
     }
@@ -61,30 +79,19 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   useEffect(() => {
     refreshSettings();
 
-    // Listen for cross-tab or component storage events
-    const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === "systemName" && e.newValue) setSystemName(e.newValue);
-      if (e.key === "instituteName" && e.newValue) setInstituteName(e.newValue);
-      if (e.key === "logoUrl") setLogoUrl(e.newValue || "");
-    };
-
+    // Listen for custom trigger to reload settings
     const handleCustomStorageEvent = () => {
-      setSystemName(localStorage.getItem("systemName") || "KNIT");
-      setInstituteName(localStorage.getItem("instituteName") || "Kamla Nehru Institute of Technology");
-      setLogoUrl(localStorage.getItem("logoUrl") || "");
-      refreshSettings(); // fetch rest of settings like googleLoginEnabled
+      refreshSettings();
     };
 
-    window.addEventListener("storage", handleStorageChange);
-    window.addEventListener("storage", handleCustomStorageEvent); // Using the same event name as we trigger in Settings.tsx
+    window.addEventListener("storage", handleCustomStorageEvent);
     return () => {
-      window.removeEventListener("storage", handleStorageChange);
       window.removeEventListener("storage", handleCustomStorageEvent);
     };
   }, []);
 
   return (
-    <SettingsContext.Provider value={{ systemName, instituteName, logoUrl, googleLoginEnabled, anonymousFeedback, autoActivateBasedOnDate, loading, refreshSettings }}>
+    <SettingsContext.Provider value={{ systemName, instituteName, logoUrl, campusImageUrl, campusImages, googleLoginEnabled, anonymousFeedback, autoActivateBasedOnDate, loading, refreshSettings }}>
       {children}
     </SettingsContext.Provider>
   );

@@ -2,7 +2,8 @@ import mongoose from "mongoose";
 import { AuditLog } from "../models/audit.model.js";
 import { logger } from "./logger.js";
 
-interface IAuditOptions {
+export interface IAuditOptions {
+  institutionId?: mongoose.Types.ObjectId | string;
   userId?: mongoose.Types.ObjectId | string;
   action: string;
   details: string;
@@ -19,7 +20,12 @@ export const logAudit = async (options: IAuditOptions) => {
       ? new mongoose.Types.ObjectId(options.userId)
       : undefined;
 
+    const institutionIdObj = options.institutionId
+      ? new mongoose.Types.ObjectId(options.institutionId)
+      : undefined;
+
     await AuditLog.create({
+      institutionId: institutionIdObj,
       userId: userIdObj,
       action: options.action,
       details: options.details,

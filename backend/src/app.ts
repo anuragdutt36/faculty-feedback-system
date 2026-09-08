@@ -4,6 +4,7 @@ import helmet from "helmet";
 import morgan from "morgan";
 import path from "path";
 import mongoSanitize from "express-mongo-sanitize";
+import cookieParser from "cookie-parser";
 
 // Environment Configuration
 import { env } from "./config/env.js";
@@ -29,6 +30,10 @@ import analyticsRoutes from "./routes/analytics.routes.js";
 import settingsRoutes from "./routes/settings.routes.js";
 import rollMappingRoutes from "./routes/rollMapping.routes.js";
 import notificationRoutes from "./routes/notification.routes.js";
+import platformAdminRoutes from "./routes/platformAdmin.routes.js";
+import applicationRoutes from "./routes/application.routes.js";
+import publicInstitutionRoutes from "./routes/publicInstitution.routes.js";
+import { resolveTenant } from "./middleware/tenantResolver.js";
 
 const app = express();
 
@@ -102,7 +107,16 @@ app.use(
     },
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept"],
+    allowedHeaders: [
+      "Content-Type",
+      "Authorization",
+      "X-Requested-With",
+      "Accept",
+      "X-Institution-Id",
+      "X-Institution-Slug",
+      "x-institution-id",
+      "x-institution-slug",
+    ],
     maxAge: 86400, // 24 hours preflight cache
   })
 );
@@ -117,6 +131,7 @@ if (env.isProduction) {
 // Request Body Parsers with Strict Size Limits
 app.use(express.json({ limit: "10kb" }));
 app.use(express.urlencoded({ extended: true, limit: "10kb" }));
+app.use(cookieParser());
 
 // Prevent NoSQL Query Injection (sanitizes request body, query params, and params)
 app.use(mongoSanitize());
@@ -131,6 +146,9 @@ app.use("/api/auth/change-password", authLimiter);
 app.use("/api/feedback/token", feedbackLimiter);
 app.use("/api/feedback/submit", feedbackLimiter);
 
+// Apply Tenant Resolution to All College API Endpoints (Before Route Handlers)
+app.use("/api", resolveTenant);
+
 // Mount API Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/academic", academicRoutes);
@@ -144,6 +162,9 @@ app.use("/api/analytics", analyticsRoutes);
 app.use("/api/settings", settingsRoutes);
 app.use("/api/roll-mappings", rollMappingRoutes);
 app.use("/api/notifications", notificationRoutes);
+app.use("/api/platform", platformAdminRoutes);
+app.use("/api/applications", applicationRoutes);
+app.use("/api/institutions", publicInstitutionRoutes);
 
 // Student active feedback shortcut
 app.get(

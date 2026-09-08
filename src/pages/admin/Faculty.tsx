@@ -19,6 +19,8 @@ interface FacultyMember {
   phone?: string;
   department: string;
   designation: string;
+  role?: "faculty" | "hod" | "dean";
+  academicScope?: string;
   branchId: {
     _id: string;
     code: string;
@@ -34,6 +36,7 @@ export const Faculty: React.FC = () => {
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebounce(search, 300);
   const [selectedStatus, setSelectedStatus] = useState("");
+  const [selectedRole, setSelectedRole] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
 
   // Data States
@@ -57,6 +60,8 @@ export const Faculty: React.FC = () => {
     phone: "",
     department: "Computer Science",
     designation: "Assistant Professor",
+    role: "faculty" as "faculty" | "hod" | "dean",
+    academicScope: "Computer Science Department",
     branchId: "",
     status: "active" as "active" | "inactive",
   });
@@ -120,6 +125,8 @@ export const Faculty: React.FC = () => {
       phone: "",
       department: "Computer Science",
       designation: "Assistant Professor",
+      role: "faculty",
+      academicScope: "Computer Science Department",
       branchId: branches[0]?._id || "",
       status: "active",
     });
@@ -135,6 +142,8 @@ export const Faculty: React.FC = () => {
       phone: item.phone || "",
       department: item.department || "Computer Science",
       designation: item.designation,
+      role: item.role || "faculty",
+      academicScope: item.academicScope || "Department Scope",
       branchId: item.branchId?._id || "",
       status: item.status,
     });
@@ -148,8 +157,9 @@ export const Faculty: React.FC = () => {
       return;
     }
 
-    if (!form.email.toLowerCase().endsWith("@knit.ac.in")) {
-      showNotification("error", "Email must be a valid college email ending with @knit.ac.in");
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(form.email.toLowerCase().trim())) {
+      showNotification("error", "Email must be a valid official college email address.");
       return;
     }
 
@@ -162,14 +172,15 @@ export const Faculty: React.FC = () => {
           email: form.email,
           phone: form.phone || undefined,
           designation: form.designation,
+          role: form.role,
+          academicScope: form.academicScope,
           status: form.status
         });
-        showNotification("success", "Faculty profile updated successfully!");
+        showNotification("success", `${form.role.toUpperCase()} record updated successfully!`);
       } else {
         // Create Faculty
-        // Check if ID is unique locally
         if (faculty.some(f => f.employeeId === form.employeeId.toUpperCase())) {
-          throw new Error("Faculty ID already exists");
+          throw new Error("Employee ID already exists");
         }
         await facultyService.createFaculty({
           employeeId: form.employeeId,
@@ -177,14 +188,16 @@ export const Faculty: React.FC = () => {
           email: form.email,
           phone: form.phone || undefined,
           designation: form.designation,
+          role: form.role,
+          academicScope: form.academicScope,
           status: form.status
         });
-        showNotification("success", "Faculty profile created successfully!");
+        showNotification("success", `${form.role.toUpperCase()} record created successfully!`);
       }
       setModalOpen(false);
       loadData();
     } catch (err: any) {
-      showNotification("error", err.message || "Failed to submit faculty details.");
+      showNotification("error", err.message || "Failed to submit details.");
     } finally {
       setSubmitting(false);
     }
@@ -207,7 +220,6 @@ export const Faculty: React.FC = () => {
   const handleDelete = async () => {
     if (!deleteConfirm) return;
     try {
-      // Check Mapping counts
       const hasMappings = mappings.some(m => {
         const fid = m.facultyId && typeof m.facultyId === "object" ? m.facultyId._id : m.facultyId;
         return fid === deleteConfirm._id;
@@ -219,16 +231,15 @@ export const Faculty: React.FC = () => {
       }
 
       await facultyService.deleteFaculty(deleteConfirm._id);
-      showNotification("success", "Faculty profile deleted successfully.");
+      showNotification("success", "Record deleted successfully.");
       setDeleteConfirm(null);
       loadData();
     } catch (err: any) {
-      showNotification("error", err.message || "Failed to delete faculty member.");
+      showNotification("error", err.message || "Failed to delete record.");
       setDeleteConfirm(null);
     }
   };
 
-  // Debounced Search and drop down filters
   const getFilteredFaculty = () => {
     let list = [...faculty];
 
@@ -247,24 +258,26 @@ export const Faculty: React.FC = () => {
       list = list.filter(f => f.status === selectedStatus);
     }
 
+    if (selectedRole) {
+      list = list.filter(f => (f.role || "faculty") === selectedRole);
+    }
+
     return list;
   };
 
   const filteredFaculty = getFilteredFaculty();
 
-  // Ratings mapping helper
   const getFacultyRating = (id: string) => {
     const rankInfo = rankings.find(r => r.id === id);
     return rankInfo && rankInfo.rating > 0 ? rankInfo.rating : 4.0;
   };
 
-  // Export filtered data to CSV/Excel
   const handleExport = () => {
     if (filteredFaculty.length === 0) {
       showNotification("error", "No data to export.");
       return;
     }
-    const headers = ["Name", "Designation", "College Email", "Phone", "Assigned Subjects", "Avg Rating", "Status"];
+    const headers = ["Name", "Role", "Designation", "College Email", "Phone", "Assigned Subjects", "Avg Rating", "Status"];
     const csvContent = [
       headers.join(","),
       ...filteredFaculty.map(f => {
@@ -272,6 +285,7 @@ export const Faculty: React.FC = () => {
         const rating = getFacultyRating(f._id);
         return [
           `"${f.name}"`,
+          `"${(f.role || "faculty").toUpperCase()}"`,
           `"${f.designation}"`,
           `"${f.email}"`,
           `"${f.phone || "—"}"`,
@@ -286,14 +300,13 @@ export const Faculty: React.FC = () => {
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.setAttribute("download", "faculty_filtered_export.csv");
+    link.setAttribute("download", "institutional_users_export.csv");
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    showNotification("success", `Exported ${filteredFaculty.length} faculty details successfully.`);
+    showNotification("success", `Exported ${filteredFaculty.length} records successfully.`);
   };
 
-  // CSV/Excel file parse preview helper
   const handleImportFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -315,8 +328,8 @@ export const Faculty: React.FC = () => {
       const desIdx = headers.indexOf("designation");
       const statusIdx = headers.indexOf("status");
 
-      if (idIdx === -1 || nameIdx === -1 || deptIdx === -1 || emailIdx === -1 || desIdx === -1) {
-        throw new Error("Missing headers. Must contain: Faculty ID, Name, Department, College Email, Designation");
+      if (idIdx === -1 || nameIdx === -1 || emailIdx === -1 || desIdx === -1) {
+        throw new Error("Missing headers. Must contain: Faculty ID, Name, College Email, Designation");
       }
 
       let duplicates = 0;
@@ -338,7 +351,7 @@ export const Faculty: React.FC = () => {
         parsedRows.push({
           employeeId: id,
           name: cols[nameIdx],
-          branchName: cols[deptIdx],
+          branchName: deptIdx !== -1 ? cols[deptIdx] : "Computer Science",
           email: email,
           phone: phoneIdx !== -1 ? cols[phoneIdx] : "",
           designation: cols[desIdx],
@@ -361,25 +374,23 @@ export const Faculty: React.FC = () => {
     try {
       const res = await facultyService.importFaculty(importingFile);
       if (res?.success) {
-        showNotification("success", `Successfully imported ${res.data?.count || 0} faculty profiles!`);
+        showNotification("success", `Successfully imported ${res.data?.count || 0} profiles!`);
         setImportOpen(false);
         setImportingFile(null);
         setImportPreview([]);
         loadData();
       }
     } catch (err: any) {
-      showNotification("error", err.message || "Failed to import faculty file.");
+      showNotification("error", err.message || "Failed to import file.");
     } finally {
       setSubmitting(false);
     }
   };
 
-  // KPI calculations
   const totalCount = faculty.length;
   const activeCount = faculty.filter(f => f.status === "active").length;
   const uniqueBranches = Array.from(new Set(faculty.map(f => f.branchId?._id).filter(Boolean))).length;
   
-  // Calculate average rating across all faculty
   const getOverallRatingAvg = () => {
     const ratedFaculty = faculty.map(f => getFacultyRating(f._id)).filter(r => r > 0);
     if (ratedFaculty.length === 0) return "4.1";
@@ -389,15 +400,15 @@ export const Faculty: React.FC = () => {
 
   return (
     <div>
-      <ModHeader title="Faculty Management" sub="Add, edit, and manage all faculty profiles for feedback collections" dark={dark}>
-        <ModBtn icon={Plus} variant="primary" onClick={openAddModal}>Add Faculty</ModBtn>
+      <ModHeader title="Institutional User Management" sub="Manage authorized Faculty, HOD, and Dean profiles for Google OAuth passwordless access" dark={dark}>
+        <ModBtn icon={Plus} variant="primary" onClick={openAddModal}>Add Record</ModBtn>
         <ModBtn icon={Download} variant="outline" onClick={handleExport}>Export</ModBtn>
-        <ModBtn icon={Upload} variant="outline" onClick={() => setImportOpen(true)}>Import Faculty</ModBtn>
+        <ModBtn icon={Upload} variant="outline" onClick={() => setImportOpen(true)}>Import CSV</ModBtn>
       </ModHeader>
 
       {notification && (
         <div className={cn(
-          "mb-5 p-4 rounded-2xl border text-sm flex items-center justify-between shadow-sm animate-in fade-in slide-in-from-top-4 duration-300",
+          "mb-5 p-4 rounded-2xl border text-sm flex items-center justify-between shadow-sm",
           notification.type === "success"
             ? "bg-emerald-50 border-emerald-200 text-emerald-800 dark:bg-emerald-950/20 dark:border-emerald-900 dark:text-emerald-300"
             : "bg-red-50 border-red-200 text-red-800 dark:bg-red-950/20 dark:border-red-900 dark:text-red-300"
@@ -410,8 +421,8 @@ export const Faculty: React.FC = () => {
       {/* KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         {[
-          { label: "Total Faculty", value: totalCount, icon: Users, color: "bg-[#0B3D91]" },
-          { label: "Active Faculty", value: activeCount, icon: UserCheck, color: "bg-emerald-500" },
+          { label: "Total Members", value: totalCount, icon: Users, color: "bg-[#0B3D91]" },
+          { label: "Active Authorized", value: activeCount, icon: UserCheck, color: "bg-emerald-500" },
           { label: "Departments", value: uniqueBranches || branches.length, icon: Building2, color: "bg-[#3B82F6]" },
           { label: "Avg Rating", value: `${getOverallRatingAvg()} ★`, icon: Star, color: "bg-amber-500" },
         ].map(({ label, value, icon: Icon, color }) => (
@@ -429,6 +440,17 @@ export const Faculty: React.FC = () => {
         
         <select
           className={cn("px-4 py-2.5 rounded-xl border text-sm focus:outline-none cursor-pointer w-full sm:w-auto", dark ? "bg-white/8 border-white/10 text-white" : "bg-[#F0F4FA] border-[#0B3D91]/10 text-[#0D1B3E]")}
+          value={selectedRole}
+          onChange={(e) => setSelectedRole(e.target.value)}
+        >
+          <option value="" className="bg-white text-[#0D1B3E] dark:bg-[#132052] dark:text-white text-xs">All Roles</option>
+          <option value="faculty" className="bg-white text-[#0D1B3E] dark:bg-[#132052] dark:text-white text-xs">Faculty</option>
+          <option value="hod" className="bg-white text-[#0D1B3E] dark:bg-[#132052] dark:text-white text-xs">HOD</option>
+          <option value="dean" className="bg-white text-[#0D1B3E] dark:bg-[#132052] dark:text-white text-xs">Dean</option>
+        </select>
+
+        <select
+          className={cn("px-4 py-2.5 rounded-xl border text-sm focus:outline-none cursor-pointer w-full sm:w-auto", dark ? "bg-white/8 border-white/10 text-white" : "bg-[#F0F4FA] border-[#0B3D91]/10 text-[#0D1B3E]")}
           value={selectedStatus}
           onChange={(e) => setSelectedStatus(e.target.value)}
         >
@@ -437,60 +459,44 @@ export const Faculty: React.FC = () => {
           <option value="inactive" className="bg-white text-[#0D1B3E] dark:bg-[#132052] dark:text-white text-xs">Inactive</option>
         </select>
 
-        {(selectedStatus || search) && (
-          <button onClick={() => { setSelectedStatus(""); setSearch(""); setCurrentPage(1); }} className="text-xs font-bold text-red-500 hover:underline cursor-pointer border-0 bg-transparent">Clear Filters</button>
+        {(selectedStatus || selectedRole || search) && (
+          <button onClick={() => { setSelectedStatus(""); setSelectedRole(""); setSearch(""); setCurrentPage(1); }} className="text-xs font-bold text-red-500 hover:underline cursor-pointer border-0 bg-transparent">Clear Filters</button>
         )}
       </div>
 
       {loading ? (
         <div className="flex flex-col items-center justify-center py-20">
           <Loader2 size={36} className="animate-spin text-[#0B3D91]" />
-          <p className={cn("text-sm mt-3 font-medium", textSub)}>Loading faculty database...</p>
+          <p className={cn("text-sm mt-3 font-medium", textSub)}>Loading user database...</p>
         </div>
       ) : (
         <ModTable
           dark={dark}
-          headers={["Name", "Designation", "College Email", "Phone", "Assigned Subjects", "Avg Rating", "Status", "Actions"]}
+          headers={["Name", "Authorized Role", "Designation", "Official Email", "Assigned Scope", "Status", "Actions"]}
           totalCount={filteredFaculty.length}
           page={currentPage}
           onPageChange={setCurrentPage}
         >
           {filteredFaculty.length === 0 ? (
             <tr>
-              <td colSpan={8} className="text-center py-8 text-xs font-semibold text-gray-400">No faculty records found.</td>
+              <td colSpan={7} className="text-center py-8 text-xs font-semibold text-gray-400">No institutional user records found.</td>
             </tr>
           ) : (
             filteredFaculty.slice((currentPage - 1) * 10, currentPage * 10).map((r) => {
-              const facultyMappings = mappings.filter(m => m.facultyId?._id === r._id);
-              const subjectNames = facultyMappings.map(m => `${m.subjectId?.code || "SUB"}: ${m.subjectId?.name || "N/A"}`);
-              const rating = getFacultyRating(r._id);
+              const roleVal = r.role || "faculty";
               return (
                 <tr key={r._id} className={cn("transition-colors", dark ? "hover:bg-white/5" : "hover:bg-[#F8FAFD]")}>
                   <ModTd>
                     <span className={cn("font-bold text-sm", textPrimary)}>{r.name}</span>
                   </ModTd>
+                  <ModTd>
+                    <Badge variant={roleVal === "dean" ? "info" : roleVal === "hod" ? "warning" : "default"}>
+                      {roleVal.toUpperCase()}
+                    </Badge>
+                  </ModTd>
                   <ModTd><span className={textSub}>{r.designation}</span></ModTd>
                   <ModTd><span className={textSub}>{r.email}</span></ModTd>
-                  <ModTd><span className={textSub}>{r.phone || "—"}</span></ModTd>
-                  <ModTd>
-                    <button
-                      onClick={() => facultyMappings.length > 0 && setActiveFacultySubjects({ name: r.name, list: subjectNames })}
-                      className={cn(
-                        "text-xs font-bold underline transition-colors cursor-pointer border-0 bg-transparent",
-                        facultyMappings.length > 0
-                          ? "text-[#0B3D91] dark:text-blue-400 hover:text-[#0a348a]"
-                          : "text-gray-400 cursor-not-allowed no-underline"
-                      )}
-                    >
-                      {facultyMappings.length} Subjects
-                    </button>
-                  </ModTd>
-                  <ModTd>
-                    <div className="flex items-center gap-1">
-                      <Star size={11} className="text-amber-400 fill-amber-400" />
-                      <span className={cn("font-bold", textPrimary)}>{rating}</span>
-                    </div>
-                  </ModTd>
+                  <ModTd><span className={textSub}>{r.academicScope || r.department || "General"}</span></ModTd>
                   <ModTd>
                     <button
                       onClick={() => handleToggleStatus(r)}
@@ -515,7 +521,7 @@ export const Faculty: React.FC = () => {
         </ModTable>
       )}
 
-      {/* --- Add / Edit Faculty Modal --- */}
+      {/* --- Add / Edit User Modal --- */}
       {modalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
           <div className={cn(
@@ -524,14 +530,12 @@ export const Faculty: React.FC = () => {
           )}>
             <div className="flex items-center justify-between mb-5">
               <h3 className={cn("font-bold text-lg", textPrimary)} style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-                {editItem ? "Edit" : "Create"} Faculty Member
+                {editItem ? "Edit" : "Create"} Institutional Record
               </h3>
               <button onClick={() => setModalOpen(false)} className="p-1 rounded-lg text-[#5A6E8E] hover:bg-red-50 dark:hover:bg-white/5 cursor-pointer border-0 bg-transparent"><X size={18} /></button>
             </div>
 
             <form onSubmit={handleModalSubmit} className="space-y-4">
-              {/* Faculty ID, Department, and Branch fields have been removed per user request */}
-
               <div>
                 <label className={cn("block text-xs font-semibold mb-1.5", textSub)}>Full Name</label>
                 <input
@@ -545,11 +549,11 @@ export const Faculty: React.FC = () => {
               </div>
 
               <div>
-                <label className={cn("block text-xs font-semibold mb-1.5", textSub)}>College Email</label>
+                <label className={cn("block text-xs font-semibold mb-1.5", textSub)}>Official Institutional Email</label>
                 <input
                   type="email"
                   required
-                  placeholder="e.g. priya@knit.ac.in"
+                  placeholder="e.g. faculty@college.ac.in"
                   className={cn("w-full px-3 py-2.5 rounded-xl border text-sm focus:outline-none", inputCls)}
                   value={form.email}
                   onChange={(e) => setForm({ ...form, email: e.target.value })}
@@ -557,42 +561,53 @@ export const Faculty: React.FC = () => {
               </div>
 
               <div>
-                <label className={cn("block text-xs font-semibold mb-1.5", textSub)}>Phone Number (Optional)</label>
-                <input
-                  type="text"
-                  placeholder="e.g. +91-9876543210"
-                  className={cn("w-full px-3 py-2.5 rounded-xl border text-sm focus:outline-none", inputCls)}
-                  value={form.phone}
-                  onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                />
-              </div>
-
-              {/* Department and Branch fields removed */}
-
-              <div>
-                <label className={cn("block text-xs font-semibold mb-1.5", textSub)}>Designation</label>
+                <label className={cn("block text-xs font-semibold mb-1.5", textSub)}>Authorized System Role</label>
                 <select
                   required
-                  className={cn("w-full px-3 py-2.5 rounded-xl border text-sm focus:outline-none", inputCls)}
-                  value={form.designation}
-                  onChange={(e) => setForm({ ...form, designation: e.target.value })}
+                  className={cn("w-full px-3 py-2.5 rounded-xl border text-sm focus:outline-none font-bold", inputCls)}
+                  value={form.role}
+                  onChange={(e) => setForm({ ...form, role: e.target.value as any })}
                 >
-                  {["Assistant Professor", "Associate Professor", "Professor", "Guest Faculty", "Head of Department"].map(d => (
-                    <option key={d} value={d}>{d}</option>
-                  ))}
+                  <option value="faculty">Faculty</option>
+                  <option value="hod">HOD (Head of Department)</option>
+                  <option value="dean">DEAN (Academic Dean)</option>
                 </select>
               </div>
 
               <div>
-                <label className={cn("block text-xs font-semibold mb-1.5", textSub)}>Status</label>
+                <label className={cn("block text-xs font-semibold mb-1.5", textSub)}>Designation</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Associate Professor / Dean Academics"
+                  className={cn("w-full px-3 py-2.5 rounded-xl border text-sm focus:outline-none", inputCls)}
+                  value={form.designation}
+                  onChange={(e) => setForm({ ...form, designation: e.target.value })}
+                />
+              </div>
+
+              <div>
+                <label className={cn("block text-xs font-semibold mb-1.5", textSub)}>Assigned Scope / Department</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Computer Science Department or All Departments"
+                  className={cn("w-full px-3 py-2.5 rounded-xl border text-sm focus:outline-none", inputCls)}
+                  value={form.academicScope}
+                  onChange={(e) => setForm({ ...form, academicScope: e.target.value })}
+                />
+              </div>
+
+              <div>
+                <label className={cn("block text-xs font-semibold mb-1.5", textSub)}>Account Status</label>
                 <select
                   required
                   className={cn("w-full px-3 py-2.5 rounded-xl border text-sm focus:outline-none", inputCls)}
                   value={form.status}
                   onChange={(e) => setForm({ ...form, status: e.target.value as any })}
                 >
-                  <option value="active">Active</option>
-                  <option value="inactive">Inactive</option>
+                  <option value="active">Active (Authorized)</option>
+                  <option value="inactive">Inactive (Deauthorized)</option>
                 </select>
               </div>
 
@@ -610,7 +625,7 @@ export const Faculty: React.FC = () => {
                   className="flex-1 py-2.5 rounded-xl bg-[#0B3D91] text-white text-xs font-bold hover:bg-[#0a348a] flex items-center justify-center gap-1 cursor-pointer disabled:opacity-60 border-0"
                 >
                   {submitting && <Loader2 size={13} className="animate-spin" />}
-                  {editItem ? "Save Changes" : "Create Profile"}
+                  {editItem ? "Save Changes" : "Save Record"}
                 </button>
               </div>
             </form>

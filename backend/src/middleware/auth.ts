@@ -10,15 +10,16 @@ export const authenticate = (
   res: Response,
   next: NextFunction
 ) => {
-  const authHeader = req.headers.authorization || (req.headers.Authorization as string);
+  let token = req.cookies?.accessToken;
 
-  if (!authHeader || !authHeader.startsWith("Bearer ")) {
-    return res
-      .status(401)
-      .json(ApiResponse.error("Unauthorized: Access token missing or invalid"));
+  // Fallback to Authorization header if no cookie is found (useful for APIs outside browser)
+  if (!token) {
+    const authHeader = req.headers.authorization || (req.headers.Authorization as string);
+    if (authHeader && authHeader.startsWith("Bearer ")) {
+      token = authHeader.split(" ")[1];
+    }
   }
 
-  const token = authHeader.split(" ")[1];
   if (!token) {
     return res
       .status(401)
@@ -37,6 +38,7 @@ export const authenticate = (
       id: decoded.id,
       username: decoded.username,
       role: decoded.role as UserRole,
+      institutionId: decoded.institutionId,
     };
     next();
   } catch (error: any) {

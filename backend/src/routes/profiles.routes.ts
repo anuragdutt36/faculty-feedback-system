@@ -5,6 +5,9 @@ import { validateObjectId } from "../middleware/validateObjectId.js";
 
 const router = Router();
 
+// Profile Me
+router.get("/me", authenticate, ProfilesController.getProfileMe);
+
 // Faculty Profiles
 router.get("/faculty", authenticate, ProfilesController.getFaculty);
 router.post(

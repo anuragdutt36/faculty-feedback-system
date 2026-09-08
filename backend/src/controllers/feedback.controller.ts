@@ -16,20 +16,23 @@ export class FeedbackController {
         return res.status(400).json(ApiResponse.error("feedbackSessionId, subjectId, and facultyId are required"));
       }
 
+      const institutionId = req.user.institutionId || req.institutionId;
+
       const token = await FeedbackService.generateSubmissionToken(
         req.user.id,
         feedbackSessionId,
         subjectId,
-        facultyId
+        facultyId,
+        institutionId ? institutionId.toString() : undefined
       );
 
       // Audit token generation, but NEVER log the token itself in the audit logs!
-      // This maintains strict anonymity, since logging token values would allow correlation.
       await logAudit({
         userId: req.user.id,
         action: "FEEDBACK_TOKEN_GENERATE",
         details: `Generated submission token for Session: ${feedbackSessionId}, Subject: ${subjectId}`,
         ipAddress: req.ip,
+        institutionId: institutionId ? (institutionId as any) : undefined,
       });
 
       return res.status(200).json(ApiResponse.success("Token generated successfully", { token }));
@@ -41,15 +44,16 @@ export class FeedbackController {
   static async submitFeedback(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
       const { token, ratings } = req.body;
+      const institutionId = req.user?.institutionId || req.institutionId;
 
       await FeedbackService.submitFeedback(token, ratings);
 
       // Audit submission without identifying which user submitted it.
-      // We don't link userId here for anonymous submissions.
       await logAudit({
         action: "FEEDBACK_SUBMIT_ANONYMOUS",
         details: `Anonymous feedback response submitted successfully`,
         ipAddress: req.ip,
+        institutionId: institutionId ? (institutionId as any) : undefined,
       });
 
       return res.status(200).json(ApiResponse.success("Feedback submitted successfully"));
@@ -64,10 +68,12 @@ export class FeedbackController {
         return res.status(403).json(ApiResponse.error("Only students can fetch submission history"));
       }
 
-      const history = await FeedbackService.getStudentHistory(req.user.id);
+      const institutionId = req.user.institutionId || req.institutionId;
+      const history = await FeedbackService.getStudentHistory(req.user.id, institutionId ? institutionId.toString() : undefined);
       return res.status(200).json(ApiResponse.success("Student submission history fetched", history));
     } catch (error) {
       next(error);
     }
   }
 }
+export default FeedbackController;

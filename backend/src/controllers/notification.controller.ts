@@ -1,12 +1,15 @@
-import { Request, Response, NextFunction } from "express";
+import { Response, NextFunction } from "express";
 import { NotificationService } from "../services/notification.service.js";
+import { AuthenticatedRequest } from "../types/index.js";
 
 export class NotificationController {
   // GET /api/notifications — fetch all and mark as read
-  static async getMyNotifications(req: Request, res: Response, next: NextFunction) {
+  static async getMyNotifications(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
-      const userId = (req as any).user.id;
-      const notifs = await NotificationService.getForStudent(userId, true);
+      const userId = req.user?.id;
+      if (!userId) return res.status(401).json({ success: false, message: "Unauthorized" });
+      const institutionId = req.user?.institutionId || req.institutionId;
+      const notifs = await NotificationService.getForStudent(userId, true, institutionId ? institutionId.toString() : undefined);
       res.json({ success: true, data: notifs });
     } catch (err) {
       next(err);
@@ -14,10 +17,12 @@ export class NotificationController {
   }
 
   // GET /api/notifications/unread-count
-  static async getUnreadCount(req: Request, res: Response, next: NextFunction) {
+  static async getUnreadCount(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
-      const userId = (req as any).user.id;
-      const count = await NotificationService.getUnreadCount(userId);
+      const userId = req.user?.id;
+      if (!userId) return res.status(401).json({ success: false, message: "Unauthorized" });
+      const institutionId = req.user?.institutionId || req.institutionId;
+      const count = await NotificationService.getUnreadCount(userId, institutionId ? institutionId.toString() : undefined);
       res.json({ success: true, data: { count } });
     } catch (err) {
       next(err);
@@ -25,10 +30,12 @@ export class NotificationController {
   }
 
   // PUT /api/notifications/read-all
-  static async markAllRead(req: Request, res: Response, next: NextFunction) {
+  static async markAllRead(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
-      const userId = (req as any).user.id;
-      await NotificationService.markAllRead(userId);
+      const userId = req.user?.id;
+      if (!userId) return res.status(401).json({ success: false, message: "Unauthorized" });
+      const institutionId = req.user?.institutionId || req.institutionId;
+      await NotificationService.markAllRead(userId, institutionId ? institutionId.toString() : undefined);
       res.json({ success: true });
     } catch (err) {
       next(err);
@@ -36,10 +43,12 @@ export class NotificationController {
   }
 
   // PUT /api/notifications/:id/read
-  static async markOneRead(req: Request, res: Response, next: NextFunction) {
+  static async markOneRead(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
-      const userId = (req as any).user.id;
-      await NotificationService.markOneRead(req.params.id, userId);
+      const userId = req.user?.id;
+      if (!userId) return res.status(401).json({ success: false, message: "Unauthorized" });
+      const institutionId = req.user?.institutionId || req.institutionId;
+      await NotificationService.markOneRead(req.params.id, userId, institutionId ? institutionId.toString() : undefined);
       res.json({ success: true });
     } catch (err) {
       next(err);
@@ -47,13 +56,16 @@ export class NotificationController {
   }
 
   // DELETE /api/notifications/:id
-  static async deleteOne(req: Request, res: Response, next: NextFunction) {
+  static async deleteOne(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
-      const userId = (req as any).user.id;
-      await NotificationService.deleteOne(req.params.id, userId);
+      const userId = req.user?.id;
+      if (!userId) return res.status(401).json({ success: false, message: "Unauthorized" });
+      const institutionId = req.user?.institutionId || req.institutionId;
+      await NotificationService.deleteOne(req.params.id, userId, institutionId ? institutionId.toString() : undefined);
       res.json({ success: true });
     } catch (err) {
       next(err);
     }
   }
 }
+export default NotificationController;

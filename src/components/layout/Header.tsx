@@ -4,11 +4,12 @@ import {
   Bell, Sun, Moon, ChevronDown, Menu, LogOut,
   LayoutDashboard, Building2, BookOpen, Users, HelpCircle, GitMerge,
   ClipboardList, BarChart3, LineChart, ScrollText, Settings, History,
-  Shield, TrendingUp
+  Shield, TrendingUp, User
 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext.js";
 import { useTheme } from "../../context/ThemeContext.js";
 import { useSettings } from "../../context/SettingsContext.js";
+import { useTenant } from "../../context/TenantContext.js";
 import { LogoMark } from "../common/LogoMark.js";
 import { notificationService } from "../../services/notification.service.js";
 
@@ -19,9 +20,12 @@ interface HeaderProps {
 export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
   const { user, logout } = useAuth();
   const { dark, setDark } = useTheme();
-  const { systemName } = useSettings();
+  const { systemName: globalSystemName } = useSettings();
+  const { institution: tenantInst, portalSlug } = useTenant();
   const location = useLocation();
   const navigate = useNavigate();
+
+  const displayName = tenantInst?.settings?.systemName || tenantInst?.name || globalSystemName || (portalSlug ? portalSlug.toUpperCase() : "Faculty Feedback");
 
   const [unreadCount, setUnreadCount] = useState(0);
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
@@ -106,15 +110,26 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
           { path: "/student/privacy", label: "Privacy Policy", icon: Shield },
         ];
       case "hod":
+      case "dean":
+        const basePath = user.role === "dean" ? "/dean" : "/hod";
         return [
-          { path: "/hod", label: "Dashboard", icon: LayoutDashboard, exact: true },
-          { path: "/hod/reports", label: "Department Reports", icon: BarChart3 },
+          { path: basePath, label: "Dashboard", icon: LayoutDashboard, exact: true },
+          { path: `${basePath}/faculty-performance`, label: "Faculty Performance", icon: Users },
+          { path: `${basePath}/subject-performance`, label: "Subject Performance", icon: BookOpen },
+          { path: `${basePath}/trends`, label: "Feedback Trends", icon: TrendingUp },
+          { path: `${basePath}/reports`, label: "Reports", icon: BarChart3 },
+          { path: `${basePath}/notifications`, label: "Notifications", icon: Bell },
+          { path: `${basePath}/profile`, label: "Profile", icon: User },
+          { path: `${basePath}/help`, label: "Help & FAQ", icon: HelpCircle },
         ];
       case "faculty":
         return [
           { path: "/faculty", label: "Dashboard", icon: LayoutDashboard, exact: true },
-          { path: "/faculty/reports", label: "Feedback Reports", icon: BarChart3 },
-          { path: "/faculty/trends", label: "Trends", icon: TrendingUp },
+          { path: "/faculty/my-feedback", label: "My Feedback", icon: ClipboardList },
+          { path: "/faculty/reports", label: "Reports", icon: BarChart3 },
+          { path: "/faculty/profile", label: "Profile", icon: User },
+          { path: "/faculty/notifications", label: "Notifications", icon: Bell },
+          { path: "/faculty/help", label: "Help & FAQ", icon: HelpCircle },
         ];
       default:
         return [];
@@ -145,7 +160,7 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu }) => {
               className={`font-bold text-xs sm:text-base leading-tight truncate ${textPrimary}`}
               style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
             >
-              {systemName || "KNIT"} Faculty Feedback System
+              {displayName} Faculty Feedback System
             </span>
             <span className={`text-[10px] sm:text-[11px] leading-tight truncate capitalize ${textSub}`}>
               {user.role} Portal

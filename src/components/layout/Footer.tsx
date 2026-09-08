@@ -1,9 +1,9 @@
 import React from "react";
 import { useNavigate } from "react-router";
 import { Globe, Shield, Lock, Award, HelpCircle, Mail, FileText, CheckCircle2, ShieldCheck } from "lucide-react";
-import { motion } from "framer-motion";
 import { useTheme } from "../../context/ThemeContext.js";
 import { useSettings } from "../../context/SettingsContext.js";
+import { useTenant } from "../../context/TenantContext.js";
 import { LogoMark } from "../common/LogoMark.js";
 
 interface FooterProps {
@@ -14,11 +14,12 @@ interface FooterProps {
 export const Footer: React.FC<FooterProps> = ({ compact = false, landing = false }) => {
   const { dark } = useTheme();
   const { systemName, instituteName } = useSettings();
+  const { institution: tenantInst, portalSlug } = useTenant();
   const navigate = useNavigate();
 
   const isDark = landing || dark;
-  const sysName = systemName || "KNIT";
-  const instName = instituteName || "Kamla Nehru Institute of Technology, Sultanpur";
+  const sysName = tenantInst?.settings?.systemName || systemName || (portalSlug && portalSlug !== "knit" ? portalSlug.toUpperCase() : "KNIT");
+  const instName = tenantInst?.name || (portalSlug && portalSlug !== "knit" ? "Rajkiya Engineering College" : (instituteName || "Kamla Nehru Institute of Technology, Sultanpur"));
 
   const textColor = isDark ? "text-white" : "text-[#0D1B3E]";
   const subTextColor = isDark ? "text-blue-200/70" : "text-[#5A6E8E]";
@@ -31,11 +32,7 @@ export const Footer: React.FC<FooterProps> = ({ compact = false, landing = false
 
   if (compact) {
     return (
-      <motion.footer 
-        initial={{ opacity: 0 }}
-        whileInView={{ opacity: 1 }}
-        transition={{ duration: 0.5 }}
-        viewport={{ once: true }}
+      <footer 
         className={`border-t px-4 sm:px-8 py-3.5 mt-auto w-full transition-colors ${borderColor} ${bgClass}`}
       >
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2.5 text-xs">
@@ -53,16 +50,12 @@ export const Footer: React.FC<FooterProps> = ({ compact = false, landing = false
             <span>© {new Date().getFullYear()} {sysName} FFMS</span>
           </div>
         </div>
-      </motion.footer>
+      </footer>
     );
   }
 
   return (
-    <motion.footer 
-      initial={{ opacity: 0 }}
-      whileInView={{ opacity: 1 }}
-      transition={{ duration: 0.8 }}
-      viewport={{ once: true, margin: "-5%" }}
+    <footer 
       className={`border-t px-4 sm:px-8 lg:px-12 py-8 sm:py-10 lg:py-12 mt-auto w-full transition-colors ${borderColor} ${bgClass}`}
     >
       <div className="max-w-[1200px] mx-auto">
@@ -113,7 +106,7 @@ export const Footer: React.FC<FooterProps> = ({ compact = false, landing = false
               </li>
               <li>
                 <a
-                  href="mailto:feedback-support@knit.ac.in"
+                  href={`mailto:${tenantInst?.officialEmail || (portalSlug && portalSlug !== "knit" ? `support@${portalSlug}.ac.in` : "feedback-support@knit.ac.in")}`}
                   className="hover:text-[#3B82F6] hover:underline inline-flex items-center gap-1.5 transition-colors text-inherit text-[11px] sm:text-xs"
                 >
                   <Mail size={13} className="text-violet-400 shrink-0" />
@@ -168,9 +161,8 @@ export const Footer: React.FC<FooterProps> = ({ compact = false, landing = false
           </div>
         </div>
       </div>
-    </motion.footer>
+    </footer>
   );
 };
 
 export default Footer;
-

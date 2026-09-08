@@ -1,6 +1,7 @@
 import mongoose, { Schema, Document } from "mongoose";
 
 export interface IAuditLog extends Document {
+  institutionId?: mongoose.Types.ObjectId; // References Institution
   userId?: mongoose.Types.ObjectId; // References User, optional (e.g. failed login, public endpoint)
   action: string; // e.g. "LOGIN_SUCCESS", "SESSION_CREATE", "FEEDBACK_SUBMIT"
   details: string; // Human readable description
@@ -14,6 +15,7 @@ export interface IAuditLog extends Document {
 
 const AuditLogSchema = new Schema<IAuditLog>(
   {
+    institutionId: { type: Schema.Types.ObjectId, ref: "Institution", index: true },
     userId: { type: Schema.Types.ObjectId, ref: "User" },
     action: { type: String, required: true, index: true },
     details: { type: String, required: true },

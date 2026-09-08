@@ -1,33 +1,526 @@
 import mongoose from "mongoose";
 import ExcelJS from "exceljs";
 import PDFDocument from "pdfkit";
-import { FeedbackResponse, FeedbackSession, Question, SubmissionStatus } from "../models/feedback.model.js";
+import { FeedbackResponse, FeedbackSession, SubmissionStatus } from "../models/feedback.model.js";
 import { FacultyProfile, StudentProfile } from "../models/profiles.model.js";
 import { FacultySubjectMapping } from "../models/mapping.model.js";
 import { Subject, Branch } from "../models/academic.model.js";
 import { CustomError } from "../middleware/errorHandler.js";
 import { SystemSettings } from "../models/settings.model.js";
+import { Institution } from "../models/institution.model.js";
 import { logger } from "../utils/logger.js";
 
 export class ReportsService {
+  private static async getInstitutionBranding(institutionId?: string) {
+    let name = "Institution";
+    let address = "";
+    if (institutionId) {
+      const inst = await Institution.findById(institutionId);
+      if (inst) {
+        name = inst.name || name;
+        address = [inst.city, inst.state].filter(Boolean).join(", ") || (typeof inst.address === "string" ? inst.address : "");
+      }
+      const settings = await SystemSettings.findOne({ institutionId: new mongoose.Types.ObjectId(institutionId) });
+      if (settings?.instituteName) {
+        name = settings.instituteName;
+      }
+    }
+    return { name, address };
+  }
+
+  static async getFacultyFeedbackRecords(facultyUserId: string, institutionId?: string) {
+    const UserModule = await import("../models/user.model.js");
+    const User = UserModule.User;
+
+    const instFilter = institutionId ? { institutionId: new mongoose.Types.ObjectId(institutionId) } : {};
+
+    let faculty = await FacultyProfile.findOne({ userId: facultyUserId, ...instFilter }).populate("branchId");
+    if (!faculty) {
+      faculty = await FacultyProfile.findOne({ _id: facultyUserId, ...instFilter }).populate("branchId");
+    }
+    const user = await User.findOne({ _id: facultyUserId, ...instFilter });
+    if (!faculty && user) {
+      faculty = await FacultyProfile.findOne({ email: user.username.toLowerCase().trim(), ...instFilter }).populate("branchId");
+      if (faculty) {
+        faculty.userId = user._id as any;
+        await faculty.save();
+      }
+    }
+    if (!faculty) throw new CustomError("Faculty profile not found", 404);
+
+    // Collect all candidate profile IDs for this faculty
+    const allFacultyProfiles = await FacultyProfile.find({
+      $or: [
+        { userId: facultyUserId },
+        { email: faculty.email.toLowerCase().trim() },
+        { _id: faculty._id }
+      ],
+      ...instFilter,
+    });
+    const facultyIds = Array.from(new Set([
+      faculty._id.toString(),
+      facultyUserId,
+      ...allFacultyProfiles.map(f => f._id.toString())
+    ]));
+
+    const responses = await FeedbackResponse.find({
+      facultyId: { $in: facultyIds },
+      ...instFilter,
+    }).populate("subjectId");
+
+    const recordsMap = new Map();
+    for (const res of responses) {
+      if (!res.subjectId) continue;
+      const sessIdStr = res.feedbackSessionId.toString();
+      const subj = res.subjectId as any;
+      const subjIdStr = subj._id.toString();
+
+      const key = `${sessIdStr}_${subjIdStr}`;
+      if (!recordsMap.has(key)) {
+        recordsMap.set(key, {
+          sessionId: sessIdStr,
+          subjectId: subjIdStr,
+          subjectName: subj.name,
+          subjectCode: subj.code,
+          responses: []
+        });
+      }
+      recordsMap.get(key).responses.push(res);
+    }
+
+    const records = [];
+    let totalRatingSum = 0;
+    let totalRatingCount = 0;
+    const uniqueSessions = new Set<string>();
+    const uniqueSubjects = new Set<string>();
+    let latestAcademicYear = "2025–26";
+    let latestPeriod = "Current Term";
+
+    for (const [key, data] of recordsMap.entries()) {
+      const session = await FeedbackSession.findOne({ _id: data.sessionId, ...instFilter }).populate("questions");
+      if (!session) continue;
+
+      uniqueSessions.add(session._id.toString());
+      uniqueSubjects.add(data.subjectId.toString());
+      if (session.academicYear) latestAcademicYear = session.academicYear;
+      if (session.name) latestPeriod = session.name;
+
+      let overallScoreSum = 0;
+      let ratingCount = 0;
+
+      const questionsList = (session.questions as any[]) || [];
+      const questionAverages: any[] = [];
+      const questionScores: any[] = [];
+      const categoryMap = new Map<string, { sum: number; count: number }>();
+      const comments: string[] = [];
+
+      for (const q of questionsList) {
+        let qSum = 0;
+        let qCount = 0;
+
+        data.responses.forEach((res: any) => {
+          const matchingRating = res.ratings?.find((r: any) => r.questionId?.toString() === q._id.toString());
+          if (matchingRating && typeof matchingRating.rating === "number" && !isNaN(matchingRating.rating)) {
+            qSum += matchingRating.rating;
+            qCount++;
+          }
+          if (res.comments && typeof res.comments === "string" && res.comments.trim()) {
+            if (!comments.includes(res.comments.trim())) {
+              comments.push(res.comments.trim());
+            }
+          }
+        });
+
+        const avg = qCount > 0 ? parseFloat((qSum / qCount).toFixed(2)) : 0.0;
+        questionAverages.push({
+          questionId: q._id,
+          text: q.text,
+          category: q.category || "General",
+          average: avg,
+          totalVotes: qCount,
+        });
+
+        questionScores.push({
+          id: q._id,
+          question: q.text,
+          category: q.category || "General",
+          score: avg,
+        });
+
+        const catName = q.category || "General";
+        if (!categoryMap.has(catName)) {
+          categoryMap.set(catName, { sum: 0, count: 0 });
+        }
+        const cEntry = categoryMap.get(catName)!;
+        cEntry.sum += qSum;
+        cEntry.count += qCount;
+
+        overallScoreSum += qSum;
+        ratingCount += qCount;
+      }
+
+      const categoryScores = Array.from(categoryMap.entries()).map(([name, val]) => ({
+        name,
+        score: val.count > 0 ? parseFloat((val.sum / val.count).toFixed(2)) : 0.0,
+      }));
+
+      const overallScore = ratingCount > 0 ? parseFloat((overallScoreSum / ratingCount).toFixed(2)) : 0.0;
+      totalRatingSum += overallScoreSum;
+      totalRatingCount += ratingCount;
+
+      const deptName = (faculty.branchId as any)?.name || faculty.department || "Academic Department";
+
+      const reportData = {
+        facultyName: faculty.name,
+        department: deptName,
+        designation: faculty.designation || "Assistant Professor",
+        subjectName: data.subjectName,
+        semester: `Semester ${session.semester}`,
+        sessionName: session.name,
+        academicYear: session.academicYear || "2025-26",
+        responseCount: data.responses.length,
+        overallScore,
+        categoryScores,
+        questionScores,
+        trends: [
+          { period: session.academicYear || "2025-26", score: overallScore }
+        ],
+        comments,
+        isLowResponseGroup: data.responses.length < 3,
+        faculty: {
+          id: faculty._id,
+          name: faculty.name,
+          email: faculty.email,
+          designation: faculty.designation,
+          branch: deptName,
+        },
+        session: {
+          id: session._id,
+          name: session.name,
+          academicYear: session.academicYear,
+          status: session.status,
+        },
+        overallAverage: overallScore,
+        questionAverages,
+      };
+
+      records.push({
+        id: key,
+        subjectName: data.subjectName,
+        subjectCode: data.subjectCode,
+        semester: `Sem ${session.semester}`,
+        academicYear: session.academicYear || "2025-26",
+        sessionName: session.name,
+        responseCount: data.responses.length,
+        overallScore,
+        status: session.status || "active",
+        reportData
+      });
+    }
+
+    // Also include mapped subjects count if not yet having responses
+    const mappings = await FacultySubjectMapping.find({
+      facultyId: { $in: facultyIds },
+      ...instFilter,
+    });
+    const subjectsCount = Math.max(uniqueSubjects.size, mappings.length);
+
+    const overallScore = totalRatingCount > 0 ? parseFloat((totalRatingSum / totalRatingCount).toFixed(1)) : 0.0;
+
+    return {
+      academicSession: latestAcademicYear,
+      totalSessions: uniqueSessions.size,
+      subjectsCount,
+      overallScore,
+      totalResponses: responses.length,
+      latestPeriod,
+      records
+    };
+  }
+
+  // Aggregated Department Dashboard for HOD
+  static async getDepartmentDashboardData(hodUserId: string, institutionId?: string) {
+    const UserModule = await import("../models/user.model.js");
+    const User = UserModule.User;
+    const user = await User.findById(hodUserId);
+
+    const instId = institutionId || user?.institutionId?.toString();
+    const instFilter = instId ? { institutionId: new mongoose.Types.ObjectId(instId) } : {};
+
+    let hodProfile = await FacultyProfile.findOne({ userId: hodUserId, ...instFilter }).populate("branchId");
+    if (!hodProfile) {
+      hodProfile = await FacultyProfile.findOne({ _id: hodUserId, ...instFilter }).populate("branchId");
+    }
+    if (!hodProfile && user) {
+      hodProfile = await FacultyProfile.findOne({ email: user.username.toLowerCase().trim(), ...instFilter }).populate("branchId");
+      if (hodProfile) {
+        hodProfile.userId = user._id as any;
+        await hodProfile.save();
+      }
+    }
+    if (!hodProfile) {
+      hodProfile = await FacultyProfile.findOne({ role: "hod", ...instFilter }).populate("branchId");
+    }
+
+    let branchId = hodProfile?.branchId?._id || hodProfile?.branchId;
+    let deptName = hodProfile?.department || (hodProfile?.branchId as any)?.name || "Department";
+
+    // Find related branches for this department name
+    const branchQuery: any = {
+      $or: [
+        ...(branchId ? [{ _id: branchId }] : []),
+        { name: { $regex: new RegExp(deptName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), "i") } },
+        { code: { $regex: new RegExp(deptName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), "i") } }
+      ],
+      ...instFilter,
+    };
+    const matchedBranches = await Branch.find(branchQuery);
+    const matchedBranchIds = matchedBranches.map(b => b._id);
+    if (branchId && !matchedBranchIds.some(id => id.toString() === branchId.toString())) {
+      matchedBranchIds.push(branchId);
+    }
+
+    // Find active sessions for this institution/department
+    const sessionQuery: any = { status: "active", ...instFilter };
+    if (matchedBranchIds.length > 0) {
+      sessionQuery.branchId = { $in: matchedBranchIds };
+    }
+    const activeSessionsCount = await FeedbackSession.countDocuments(sessionQuery);
+
+    // Find all feedback responses for faculty in this department or branch
+    const deptFaculties = await FacultyProfile.find({
+      $or: [
+        ...(deptName ? [{ department: { $regex: new RegExp(deptName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), "i") } }] : []),
+        ...(matchedBranchIds.length > 0 ? [{ branchId: { $in: matchedBranchIds } }] : [])
+      ],
+      ...instFilter,
+    });
+    const deptFacultyIds = deptFaculties.map(f => f._id);
+
+    const matchQuery: any = {
+      $or: [
+        { facultyId: { $in: deptFacultyIds } },
+        ...(matchedBranchIds.length > 0 ? [{ branchId: { $in: matchedBranchIds } }] : [])
+      ],
+      ...instFilter,
+    };
+
+    const responses = await FeedbackResponse.find(matchQuery).populate("subjectId").populate("facultyId");
+
+    let ratingSum = 0;
+    let ratingCount = 0;
+    const evaluatedFacultySet = new Set<string>();
+    const evaluatedSubjectSet = new Set<string>();
+    const facultyScoresMap = new Map<string, { faculty: any; sum: number; count: number; responses: number }>();
+
+    for (const res of responses) {
+      const fId = res.facultyId?._id?.toString() || res.facultyId?.toString();
+      if (fId) evaluatedFacultySet.add(fId);
+      if (res.subjectId) evaluatedSubjectSet.add((res.subjectId as any)._id?.toString() || res.subjectId.toString());
+
+      if (fId) {
+        if (!facultyScoresMap.has(fId)) {
+          const fac = deptFaculties.find(f => f._id.toString() === fId) || (typeof res.facultyId === "object" ? res.facultyId : null);
+          facultyScoresMap.set(fId, { faculty: fac, sum: 0, count: 0, responses: 0 });
+        }
+        const entry = facultyScoresMap.get(fId)!;
+        entry.responses++;
+
+        if (res.ratings && Array.isArray(res.ratings)) {
+          for (const r of res.ratings) {
+            if (typeof r.rating === "number" && !isNaN(r.rating)) {
+              ratingSum += r.rating;
+              ratingCount++;
+              entry.sum += r.rating;
+              entry.count++;
+            }
+          }
+        }
+      }
+    }
+
+    const overallScore = ratingCount > 0 ? parseFloat((ratingSum / ratingCount).toFixed(1)) : 0.0;
+
+    // Calculate response rate
+    const studentQuery: any = { ...instFilter };
+    if (matchedBranchIds.length > 0) {
+      studentQuery.branchId = { $in: matchedBranchIds };
+    }
+    const studentCount = await StudentProfile.countDocuments(studentQuery);
+
+    const subQuery: any = { submitted: true, ...instFilter };
+    if (matchedBranchIds.length > 0) {
+      const studentIdsInBranch = await StudentProfile.find(studentQuery).distinct("_id");
+      subQuery.studentId = { $in: studentIdsInBranch };
+    }
+    const totalSubmissionsCount = await SubmissionStatus.countDocuments(subQuery);
+    const responseRate = studentCount > 0 ? Math.min(100, Math.round((totalSubmissionsCount / studentCount) * 100)) : (responses.length > 0 ? 100 : 0);
+
+    // Build faculty rankings
+    const facultyRankings = [];
+    for (const [, data] of facultyScoresMap.entries()) {
+      const score = data.count > 0 ? parseFloat((data.sum / data.count).toFixed(1)) : 0.0;
+      facultyRankings.push({
+        name: data.faculty ? data.faculty.name : "Faculty Member",
+        department: data.faculty ? (data.faculty.department || deptName) : deptName,
+        score,
+        responses: data.responses
+      });
+    }
+    facultyRankings.sort((a, b) => b.score - a.score);
+
+    const latestSession = await FeedbackSession.findOne(sessionQuery).sort({ createdAt: -1 });
+
+    return {
+      scopeName: deptName,
+      academicYear: latestSession?.academicYear || "2025–26",
+      activeSessions: activeSessionsCount,
+      overallScore,
+      responseRate,
+      evaluatedFacultyCount: evaluatedFacultySet.size,
+      evaluatedSubjectsCount: evaluatedSubjectSet.size,
+      facultyRankings
+    };
+  }
+
+  // Aggregated Institution Dashboard for Dean
+  static async getDeanDashboardData(deanUserId: string, institutionId?: string) {
+    const UserModule = await import("../models/user.model.js");
+    const User = UserModule.User;
+    const user = await User.findById(deanUserId);
+    const instId = institutionId || user?.institutionId?.toString();
+    const instFilter = instId ? { institutionId: new mongoose.Types.ObjectId(instId) } : {};
+
+    const sessionQuery: any = { status: "active", ...instFilter };
+    const activeSessionsCount = await FeedbackSession.countDocuments(sessionQuery);
+
+    const responseQuery: any = { ...instFilter };
+    const responses = await FeedbackResponse.find(responseQuery).populate("branchId").populate("facultyId").populate("subjectId");
+
+    let ratingSum = 0;
+    let ratingCount = 0;
+    const evaluatedFacultySet = new Set<string>();
+    const evaluatedSubjectSet = new Set<string>();
+    const branchScoresMap = new Map<string, { branchName: string; sum: number; count: number; totalResponses: number }>();
+    const facultyScoresMap = new Map<string, { name: string; department: string; sum: number; count: number; responses: number }>();
+
+    for (const res of responses) {
+      const facObj = res.facultyId as any;
+      const fIdStr = facObj?._id?.toString() || res.facultyId?.toString() || "";
+      if (fIdStr) evaluatedFacultySet.add(fIdStr);
+
+      const subjObj = res.subjectId as any;
+      const sIdStr = subjObj?._id?.toString() || res.subjectId?.toString() || "";
+      if (sIdStr) evaluatedSubjectSet.add(sIdStr);
+
+      const branchObj = res.branchId as any;
+      const bName = branchObj?.name || facObj?.department || "General";
+      const bIdStr = branchObj?._id?.toString() || bName;
+
+      if (!branchScoresMap.has(bIdStr)) {
+        branchScoresMap.set(bIdStr, { branchName: bName, sum: 0, count: 0, totalResponses: 0 });
+      }
+      const bEntry = branchScoresMap.get(bIdStr)!;
+      bEntry.totalResponses++;
+
+      const fName = facObj?.name || "Faculty Member";
+      const fDept = facObj?.department || bName;
+
+      if (fIdStr) {
+        if (!facultyScoresMap.has(fIdStr)) {
+          facultyScoresMap.set(fIdStr, { name: fName, department: fDept, sum: 0, count: 0, responses: 0 });
+        }
+        const fEntry = facultyScoresMap.get(fIdStr)!;
+        fEntry.responses++;
+
+        if (res.ratings && Array.isArray(res.ratings)) {
+          for (const r of res.ratings) {
+            if (typeof r.rating === "number" && !isNaN(r.rating)) {
+              ratingSum += r.rating;
+              ratingCount++;
+              bEntry.sum += r.rating;
+              bEntry.count++;
+              fEntry.sum += r.rating;
+              fEntry.count++;
+            }
+          }
+        }
+      }
+    }
+
+    const overallScore = ratingCount > 0 ? parseFloat((ratingSum / ratingCount).toFixed(1)) : 0.0;
+
+    const studentCount = await StudentProfile.countDocuments(instFilter);
+    const totalSubmissionsCount = await SubmissionStatus.countDocuments({ submitted: true, ...instFilter });
+    const responseRate = studentCount > 0 ? Math.min(100, Math.round((totalSubmissionsCount / studentCount) * 100)) : (responses.length > 0 ? 100 : 0);
+
+    // Build department rankings
+    const departmentRankings = [];
+    const allBranches = await Branch.find(instFilter);
+    for (const br of allBranches) {
+      const bIdStr = br._id.toString();
+      const data = branchScoresMap.get(bIdStr) || branchScoresMap.get(br.name);
+      const score = data && data.count > 0 ? parseFloat((data.sum / data.count).toFixed(1)) : 0.0;
+      const branchStudentCount = await StudentProfile.countDocuments({ branchId: br._id, ...instFilter });
+      const deptResponseRate = branchStudentCount > 0 ? Math.min(100, Math.round(((data?.totalResponses || 0) / branchStudentCount) * 100)) : (data?.totalResponses ? 100 : 0);
+
+      departmentRankings.push({
+        name: br.name,
+        score,
+        responseRate: deptResponseRate
+      });
+    }
+    departmentRankings.sort((a, b) => b.score - a.score);
+
+    // Build faculty rankings
+    const facultyRankings = [];
+    for (const [, data] of facultyScoresMap.entries()) {
+      const score = data.count > 0 ? parseFloat((data.sum / data.count).toFixed(1)) : 0.0;
+      facultyRankings.push({
+        name: data.name,
+        department: data.department,
+        score,
+        responses: data.responses
+      });
+    }
+    facultyRankings.sort((a, b) => b.score - a.score);
+
+    const latestSession = await FeedbackSession.findOne(sessionQuery).sort({ createdAt: -1 });
+
+    return {
+      scopeName: "All Academic Departments",
+      academicYear: latestSession?.academicYear || "2025–26",
+      activeSessions: activeSessionsCount,
+      overallScore,
+      responseRate,
+      evaluatedFacultyCount: evaluatedFacultySet.size,
+      evaluatedSubjectsCount: evaluatedSubjectSet.size,
+      departmentRankings,
+      facultyRankings
+    };
+  }
+
   // Aggregate individual faculty report data
-  static async getIndividualFacultyData(facultyId: string, sessionId: string) {
-    const faculty = await FacultyProfile.findById(facultyId).populate("branchId");
+  static async getIndividualFacultyData(facultyId: string, sessionId: string, institutionId?: string) {
+    const instFilter = institutionId ? { institutionId: new mongoose.Types.ObjectId(institutionId) } : {};
+
+    const faculty = await FacultyProfile.findOne({ _id: facultyId, ...instFilter }).populate("branchId");
     if (!faculty) throw new CustomError("Faculty not found", 404);
 
-    const session = await FeedbackSession.findById(sessionId).populate(["courseId", "branchId", "questions"]);
+    const session = await FeedbackSession.findOne({ _id: sessionId, ...instFilter }).populate(["courseId", "branchId", "questions"]);
     if (!session) throw new CustomError("Feedback session not found", 404);
 
     // Find all responses for this faculty in this session
     const responses = await FeedbackResponse.find({
       feedbackSessionId: sessionId,
       facultyId: facultyId,
+      ...instFilter,
     });
 
     const responseCount = responses.length;
 
     // Calculate averages per question
-    const questionsList = session.questions as any[];
+    const questionsList = (session.questions as any[]) || [];
     const questionAverages = [];
     let overallRatingSum = 0;
     let ratingCount = 0;
@@ -60,6 +553,7 @@ export class ReportsService {
     const overallAverage = ratingCount > 0 ? parseFloat((overallRatingSum / ratingCount).toFixed(2)) : 0.0;
 
     return {
+      institutionId,
       faculty: {
         id: faculty._id,
         name: faculty.name,
@@ -80,8 +574,10 @@ export class ReportsService {
   }
 
   // Aggregate consolidated class report data
-  static async getConsolidatedClassData(sessionId: string) {
-    const session = await FeedbackSession.findById(sessionId)
+  static async getConsolidatedClassData(sessionId: string, institutionId?: string) {
+    const instFilter = institutionId ? { institutionId: new mongoose.Types.ObjectId(institutionId) } : {};
+
+    const session = await FeedbackSession.findOne({ _id: sessionId, ...instFilter })
       .populate("courseId")
       .populate("branchId");
     if (!session) throw new CustomError("Feedback session not found", 404);
@@ -89,18 +585,22 @@ export class ReportsService {
     const sessCourseId = (session.courseId as any)?._id || session.courseId;
     const sessBranchId = (session.branchId as any)?._id || session.branchId;
 
-    // Use 4-tier fallback mapping logic to ensure we find the right subjects
     let mappings = await FacultySubjectMapping.find({
       courseId: sessCourseId,
       branchId: sessBranchId,
       semester: session.semester,
+      academicYear: session.academicYear,
+      ...instFilter,
     })
       .populate("facultyId")
       .populate("subjectId");
+
     if (mappings.length === 0) {
       mappings = await FacultySubjectMapping.find({
         branchId: sessBranchId,
         semester: session.semester,
+        academicYear: session.academicYear,
+        ...instFilter,
       })
         .populate("facultyId")
         .populate("subjectId");
@@ -109,20 +609,19 @@ export class ReportsService {
     const rows = [];
     let grandAverageSum = 0;
     let validAveragesCount = 0;
-    
-    // Count distinct students who submitted at least one feedback for this session
+
     const distinctSubmissions = await SubmissionStatus.distinct("studentId", {
       feedbackSessionId: sessionId,
-      submitted: true
+      submitted: true,
+      ...instFilter,
     });
     const totalResponsesReceived = distinctSubmissions.length;
 
-    // Calculate eligible students (students in this course, branch, matching target year/sem)
-    // Note: session.year refers to the student's year, and session.semester refers to the feedback target semester.
-    const eligibleStudentsCount = await mongoose.model("StudentProfile").countDocuments({
+    const eligibleStudentsCount = await StudentProfile.countDocuments({
       courseId: sessCourseId,
       branchId: sessBranchId,
-      year: session.year
+      year: session.year,
+      ...instFilter,
     });
 
     const responseRate = eligibleStudentsCount > 0 
@@ -139,6 +638,7 @@ export class ReportsService {
         feedbackSessionId: sessionId,
         facultyId: faculty._id,
         subjectId: subject._id,
+        ...instFilter,
       });
 
       const responseCount = responses.length;
@@ -173,6 +673,7 @@ export class ReportsService {
     const classAverage = validAveragesCount > 0 ? parseFloat((grandAverageSum / validAveragesCount).toFixed(2)) : 0.0;
 
     return {
+      institutionId,
       session: {
         id: session._id,
         name: session.name,
@@ -193,15 +694,15 @@ export class ReportsService {
   }
 
   // --- Excel Generators ---
-  static async generateIndividualFacultyExcel(data: any): Promise<Buffer> {
+  static async generateIndividualFacultyExcel(data: any, institutionId?: string): Promise<Buffer> {
     const workbook = new ExcelJS.Workbook();
     const sheet = workbook.addWorksheet("Faculty Feedback Report");
 
+    const branding = await this.getInstitutionBranding(institutionId || data.institutionId);
+
     // Title Block
     sheet.mergeCells("A1:E1");
-    const dbSettings = await SystemSettings.findOne();
-    const instName = dbSettings ? dbSettings.instituteName : "Institute Name";
-    sheet.getCell("A1").value = instName.toUpperCase();
+    sheet.getCell("A1").value = branding.name.toUpperCase();
     sheet.getCell("A1").font = { name: "Calibri", size: 16, bold: true, color: { argb: "FFFFFF" } };
     sheet.getCell("A1").fill = { type: "pattern", pattern: "solid", fgColor: { argb: "0B3D91" } };
     sheet.getCell("A1").alignment = { horizontal: "center", vertical: "middle" };
@@ -232,8 +733,6 @@ export class ReportsService {
       sheet.addRow([i + 1, q.category, q.text, q.totalVotes, q.average]);
     });
 
-
-
     // Auto-fit column widths
     sheet.columns.forEach((column) => {
       let maxLen = 0;
@@ -248,15 +747,15 @@ export class ReportsService {
     return Buffer.from(buffer);
   }
 
-  static async generateConsolidatedClassExcel(data: any): Promise<Buffer> {
+  static async generateConsolidatedClassExcel(data: any, institutionId?: string): Promise<Buffer> {
     const workbook = new ExcelJS.Workbook();
     const sheet = workbook.addWorksheet("Class Consolidated Report");
 
+    const branding = await this.getInstitutionBranding(institutionId || data.institutionId);
+
     // Title Block
     sheet.mergeCells("A1:E1");
-    const dbSettings = await SystemSettings.findOne();
-    const instName = dbSettings ? dbSettings.instituteName : "Institute Name";
-    sheet.getCell("A1").value = instName.toUpperCase();
+    sheet.getCell("A1").value = branding.name.toUpperCase();
     sheet.getCell("A1").font = { name: "Calibri", size: 16, bold: true, color: { argb: "FFFFFF" } };
     sheet.getCell("A1").fill = { type: "pattern", pattern: "solid", fgColor: { argb: "0B3D91" } };
     sheet.getCell("A1").alignment = { horizontal: "center", vertical: "middle" };
@@ -272,7 +771,7 @@ export class ReportsService {
     sheet.addRow(["Course & Branch:", `${data.session.course} (${data.session.branch})`, "", "Academic Year:", data.session.academicYear]);
     sheet.addRow(["Year / Semester:", `Year ${data.session.year} - Sem ${data.session.semester}`, "", "Academic Year:", data.session.academicYear]);
     sheet.addRow(["Feedback Session:", data.session.name, "", "Class Average Rating:", `${data.classAverage} / 5.00`]);
-    
+
     // Add Response Metrics
     sheet.addRow(["Eligible Students:", data.metrics.totalStudentsEligible, "", "Total Responses:", data.metrics.totalResponsesReceived]);
     sheet.addRow(["Response Rate:", `${data.metrics.responseRate}%`, "", "", ""]);
@@ -306,17 +805,16 @@ export class ReportsService {
   }
 
   // --- PDF Generators ---
-  static async generateIndividualFacultyPDF(data: any, res: any) {
+  static async generateIndividualFacultyPDF(data: any, res: any, institutionId?: string) {
     const doc = new PDFDocument({ margin: 50 });
-
     doc.pipe(res);
 
-    // Header logo text
-    const dbSettings = await SystemSettings.findOne();
-    const instName = dbSettings ? dbSettings.instituteName : "Institute Name";
-    
-    doc.fontSize(16).fillColor("#0B3D91").text(instName.toUpperCase(), { align: "center", bold: true } as any);
-    doc.fontSize(10).fillColor("#5A6E8E").text("Sultanpur, Uttar Pradesh, India - 228118", { align: "center" });
+    const branding = await this.getInstitutionBranding(institutionId || data.institutionId);
+
+    doc.fontSize(16).fillColor("#0B3D91").text(branding.name.toUpperCase(), { align: "center", bold: true } as any);
+    if (branding.address) {
+      doc.fontSize(10).fillColor("#5A6E8E").text(branding.address, { align: "center" });
+    }
     doc.moveDown(1.5);
 
     doc.fontSize(12).fillColor("#0D1B3E").text("INDIVIDUAL FACULTY EVALUATION REPORT", { align: "center", bold: true } as any);
@@ -368,17 +866,16 @@ export class ReportsService {
     doc.end();
   }
 
-  static async generateConsolidatedClassPDF(data: any, res: any) {
+  static async generateConsolidatedClassPDF(data: any, res: any, institutionId?: string) {
     const doc = new PDFDocument({ margin: 50 });
-
     doc.pipe(res);
 
-    // Header logo text
-    const dbSettings = await SystemSettings.findOne();
-    const instName = dbSettings ? dbSettings.instituteName : "Institute Name";
-    
-    doc.fontSize(16).fillColor("#0B3D91").text(instName.toUpperCase(), { align: "center", bold: true } as any);
-    doc.fontSize(10).fillColor("#5A6E8E").text("Sultanpur, Uttar Pradesh, India - 228118", { align: "center" });
+    const branding = await this.getInstitutionBranding(institutionId || data.institutionId);
+
+    doc.fontSize(16).fillColor("#0B3D91").text(branding.name.toUpperCase(), { align: "center", bold: true } as any);
+    if (branding.address) {
+      doc.fontSize(10).fillColor("#5A6E8E").text(branding.address, { align: "center" });
+    }
     doc.moveDown(1.5);
 
     doc.fontSize(12).fillColor("#0D1B3E").text("CONSOLIDATED CLASS FEEDBACK REPORT", { align: "center", bold: true } as any);
@@ -447,19 +944,22 @@ export class ReportsService {
   }
 
   // Aggregate Department Report data
-  static async getDepartmentReportData(branchId: string, sessionId: string) {
-    let branch = await Branch.findById(branchId);
+  static async getDepartmentReportData(branchId: string, sessionId: string, institutionId?: string) {
+    const instFilter = institutionId ? { institutionId: new mongoose.Types.ObjectId(institutionId) } : {};
+
+    let branch = await Branch.findOne({ _id: branchId, ...instFilter });
     if (!branch) {
       branch = await Branch.findOne({
         $or: [
           { code: { $regex: new RegExp(`^${branchId}$`, "i") } },
           { name: { $regex: new RegExp(`^${branchId}$`, "i") } },
         ],
+        ...instFilter,
       });
     }
     if (!branch) throw new CustomError("Branch not found", 404);
 
-    const session = await FeedbackSession.findById(sessionId)
+    const session = await FeedbackSession.findOne({ _id: sessionId, ...instFilter })
       .populate("courseId")
       .populate("branchId");
     if (!session) throw new CustomError("Feedback session not found", 404);
@@ -471,6 +971,7 @@ export class ReportsService {
         { code: { $regex: new RegExp(`^${branch.code}$`, "i") } },
         { name: { $regex: new RegExp(`^${branch.name}$`, "i") } },
       ],
+      ...instFilter,
     });
 
     const branchIdsToMatch = equivalentBranches.map((b) => b._id);
@@ -483,6 +984,7 @@ export class ReportsService {
         { department: { $in: branchCodesToMatch } },
         { department: { $regex: new RegExp(branch.code, "i") } },
       ],
+      ...instFilter,
     });
 
     const mappedFacultyIds = await FacultySubjectMapping.distinct("facultyId", {
@@ -491,10 +993,12 @@ export class ReportsService {
         { courseId: session.courseId },
         { semester: session.semester },
       ],
+      ...instFilter,
     });
 
     const responseFacultyIds = await FeedbackResponse.distinct("facultyId", {
       feedbackSessionId: session._id,
+      ...instFilter,
     });
 
     const candidateIds = [
@@ -504,9 +1008,9 @@ export class ReportsService {
     ];
     const uniqueCandidateIds = [...new Set(candidateIds)].filter(Boolean);
 
-    let faculties = await FacultyProfile.find({ _id: { $in: uniqueCandidateIds } });
+    let faculties = await FacultyProfile.find({ _id: { $in: uniqueCandidateIds }, ...instFilter });
     if (faculties.length === 0) {
-      faculties = await FacultyProfile.find({ status: "active" });
+      faculties = await FacultyProfile.find({ status: "active", ...instFilter });
     }
 
     const rankings = [];
@@ -515,6 +1019,7 @@ export class ReportsService {
       let responses = await FeedbackResponse.find({
         feedbackSessionId: session._id,
         facultyId: faculty._id,
+        ...instFilter,
       });
 
       if (responses.length === 0) {
@@ -522,6 +1027,7 @@ export class ReportsService {
           facultyId: faculty._id,
           branchId: { $in: branchIdsToMatch },
           semester: session.semester,
+          ...instFilter,
         });
       }
 
@@ -592,12 +1098,14 @@ export class ReportsService {
     const totalSubmissions = await SubmissionStatus.countDocuments({
       feedbackSessionId: session._id,
       submitted: true,
+      ...instFilter,
     });
 
     const studentCount = await StudentProfile.countDocuments({
       branchId: { $in: branchIdsToMatch },
+      ...instFilter,
     });
-    const fallbackStudentCount = studentCount > 0 ? studentCount : await StudentProfile.countDocuments({});
+    const fallbackStudentCount = studentCount > 0 ? studentCount : await StudentProfile.countDocuments(instFilter);
 
     const participationRateNum =
       fallbackStudentCount > 0
@@ -607,20 +1115,6 @@ export class ReportsService {
         : 0;
 
     const participationRate = `${participationRateNum}%`;
-
-    // === EXACT DEBUG LOGGING REQUIRED BY SPEC ===
-    logger.info(`[DEBUG Department Report] Selected Branch: ${branch.name} (${branch.code} - ${branch._id})`);
-    logger.info(`[DEBUG Department Report] Selected Semester: ${session.semester}`);
-    logger.info(`[DEBUG Department Report] Selected Academic Session: ${session.name} (${session.academicYear})`);
-    logger.info(`[DEBUG Department Report] Faculty IDs included: ${JSON.stringify(faculties.map((f) => f._id.toString()))}`);
-    for (const rank of rankings) {
-      logger.info(`[DEBUG Department Report] Faculty: ${rank.name} | Responses: ${rank.responseCount} | Avg: ${rank.averageRating}`);
-    }
-    logger.info(
-      `[DEBUG Department Report] Final Sorted Ranking: ${JSON.stringify(
-        rankings.map((r, i) => `#${i + 1} ${r.name}: ${r.averageRating} (${r.responseCount} responses)`)
-      )}`
-    );
 
     return {
       department: {
@@ -642,17 +1136,21 @@ export class ReportsService {
   }
 
   // Aggregate Semester Report data
-  static async getSemesterReportData(courseId: string, branchId: string, academicYear: string) {
+  static async getSemesterReportData(courseId: string, branchId: string, academicYear: string, institutionId?: string) {
+    const instFilter = institutionId ? { institutionId: new mongoose.Types.ObjectId(institutionId) } : {};
+
     const sessions = await FeedbackSession.find({
       courseId,
       branchId,
       academicYear,
+      ...instFilter,
     }).sort({ semester: 1 });
 
     const semesterData = [];
     for (const session of sessions) {
       const responses = await FeedbackResponse.find({
         feedbackSessionId: session._id,
+        ...instFilter,
       });
 
       let scoreSum = 0;
@@ -667,6 +1165,7 @@ export class ReportsService {
       const averageScore = scoreCount > 0 ? parseFloat((scoreSum / scoreCount).toFixed(2)) : 0.0;
       const responseCount = await SubmissionStatus.countDocuments({
         feedbackSessionId: session._id,
+        ...instFilter,
       });
 
       semesterData.push({
@@ -681,16 +1180,20 @@ export class ReportsService {
   }
 
   // Aggregate Trend Report data
-  static async getTrendReportData(courseId: string, branchId: string) {
+  static async getTrendReportData(courseId: string, branchId: string, institutionId?: string) {
+    const instFilter = institutionId ? { institutionId: new mongoose.Types.ObjectId(institutionId) } : {};
+
     const sessions = await FeedbackSession.find({
       courseId,
       branchId,
+      ...instFilter,
     }).sort({ academicYear: 1, semester: 1 });
 
     const trendData = [];
     for (const session of sessions) {
       const responses = await FeedbackResponse.find({
         feedbackSessionId: session._id,
+        ...instFilter,
       });
 
       let scoreSum = 0;
@@ -705,6 +1208,7 @@ export class ReportsService {
       const averageScore = scoreCount > 0 ? parseFloat((scoreSum / scoreCount).toFixed(2)) : 0.0;
       const responseCount = await SubmissionStatus.countDocuments({
         feedbackSessionId: session._id,
+        ...instFilter,
       });
 
       trendData.push({
@@ -726,8 +1230,10 @@ export class ReportsService {
     branchId?: string;
     semester?: string;
     academicYear?: string;
+    institutionId?: string;
   }) {
-    const matchQuery: any = {};
+    const instFilter = filters.institutionId ? { institutionId: new mongoose.Types.ObjectId(filters.institutionId) } : {};
+    const matchQuery: any = { ...instFilter };
 
     if (filters.sessionId && filters.sessionId !== "all") {
       matchQuery.feedbackSessionId = filters.sessionId;
@@ -736,7 +1242,7 @@ export class ReportsService {
     let branchFacultyIds: string[] = [];
 
     if (filters.branchId && filters.branchId !== "all") {
-      const targetBranch = await Branch.findById(filters.branchId);
+      const targetBranch = await Branch.findOne({ _id: filters.branchId, ...instFilter });
       let branchIdsToMatch: any[] = [filters.branchId];
       let branchCodesToMatch: string[] = [];
       if (targetBranch) {
@@ -746,6 +1252,7 @@ export class ReportsService {
             { code: { $regex: new RegExp(`^${targetBranch.code}$`, "i") } },
             { name: { $regex: new RegExp(`^${targetBranch.name}$`, "i") } },
           ],
+          ...instFilter,
         });
         branchIdsToMatch = equivalentBranches.map((b) => b._id);
         branchCodesToMatch = equivalentBranches.map((b) => b.code.toUpperCase());
@@ -759,10 +1266,12 @@ export class ReportsService {
           { branchId: { $in: branchIdsToMatch } },
           { department: { $in: branchCodesToMatch } },
         ],
+        ...instFilter,
       });
 
       const mappedIds = await FacultySubjectMapping.distinct("facultyId", {
         branchId: { $in: branchIdsToMatch },
+        ...instFilter,
       });
 
       const combined = [
@@ -783,10 +1292,8 @@ export class ReportsService {
       matchQuery.academicYear = filters.academicYear;
     }
 
-    // Find all distinct faculty IDs with feedback responses matching the query
     const rawFacultyIds = await FeedbackResponse.distinct("facultyId", matchQuery);
 
-    // Strictly filter to faculty members mapped to/belonging to the specified branch
     const facultyIds =
       branchFacultyIds.length > 0
         ? rawFacultyIds.filter((id) => branchFacultyIds.includes(id.toString()))
@@ -795,7 +1302,7 @@ export class ReportsService {
     const rankings = [];
 
     for (const facId of facultyIds) {
-      const faculty = await FacultyProfile.findById(facId).populate("branchId");
+      const faculty = await FacultyProfile.findOne({ _id: facId, ...instFilter }).populate("branchId");
       if (!faculty) continue;
 
       const responses = await FeedbackResponse.find({
@@ -804,8 +1311,6 @@ export class ReportsService {
       });
 
       const responseCount = responses.length;
-
-      // RULE: Include ONLY faculty with responseCount >= 1 (Exclude 0 responses)
       if (responseCount < 1) continue;
 
       let scoreSum = 0;
@@ -833,6 +1338,7 @@ export class ReportsService {
         subjectCount = await FacultySubjectMapping.countDocuments({
           facultyId: facId,
           status: "active",
+          ...instFilter,
         });
       }
       subjectCount = Math.max(1, subjectCount);
@@ -841,8 +1347,6 @@ export class ReportsService {
       const branchName = branchObj?.code || branchObj?.name || faculty.department || "General";
       const semDisplay = responses[0]?.semester ? `Sem ${responses[0].semester}` : filters.semester ? `Sem ${filters.semester}` : "Sem 2";
 
-      // Grade Calculation:
-      // A+ : 4.50 - 5.00 | A : 4.00 - 4.49 | B+ : 3.50 - 3.99 | B : 3.00 - 3.49 | C : below 3.00
       let grade = "C";
       if (averageRating >= 4.5) grade = "A+";
       else if (averageRating >= 4.0) grade = "A";
@@ -863,10 +1367,6 @@ export class ReportsService {
       });
     }
 
-    // Sort Rankings:
-    // 1. Descending averageRating
-    // 2. Descending responseCount (tie breaker)
-    // 3. Ascending name (tie breaker)
     rankings.sort((a, b) => {
       if (b.averageRating !== a.averageRating) {
         return b.averageRating - a.averageRating;
@@ -888,3 +1388,4 @@ export class ReportsService {
     };
   }
 }
+export default ReportsService;

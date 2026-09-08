@@ -3,6 +3,7 @@ import mongoose, { Schema, Document } from "mongoose";
 export type NotificationCategory = "feedback" | "academic" | "system";
 
 export interface INotification extends Document {
+  institutionId?: mongoose.Types.ObjectId; // References Institution
   studentId: mongoose.Types.ObjectId;
   title: string;
   message: string;
@@ -15,6 +16,11 @@ export interface INotification extends Document {
 
 const NotificationSchema = new Schema<INotification>(
   {
+    institutionId: {
+      type: Schema.Types.ObjectId,
+      ref: "Institution",
+      index: true,
+    },
     studentId: {
       type: Schema.Types.ObjectId,
       ref: "StudentProfile",

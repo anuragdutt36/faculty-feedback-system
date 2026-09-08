@@ -7,7 +7,8 @@ import { logAudit } from "../utils/auditLogger.js";
 export class QuestionsController {
   static async getQuestions(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
-      const questions = await QuestionsService.getAllQuestions();
+      const institutionId = req.user?.institutionId || req.institutionId;
+      const questions = await QuestionsService.getAllQuestions(institutionId ? institutionId.toString() : undefined);
       return res.status(200).json(ApiResponse.success("Questions fetched", questions));
     } catch (error) {
       next(error);
@@ -16,8 +17,12 @@ export class QuestionsController {
 
   static async createQuestion(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
+      const institutionId = req.user?.institutionId || req.institutionId;
       const { code, text, category } = req.body;
-      const question = await QuestionsService.createQuestion(req.body);
+      const question = await QuestionsService.createQuestion({
+        ...req.body,
+        institutionId: institutionId ? institutionId.toString() : undefined,
+      });
 
       await logAudit({
         userId: req.user?.id,
@@ -26,7 +31,8 @@ export class QuestionsController {
         ipAddress: req.ip,
         severity: "info",
         module: "feedback",
-        metadata: { code, category }
+        metadata: { code, category },
+        institutionId: institutionId ? (institutionId as any) : undefined,
       });
 
       return res.status(201).json(ApiResponse.success("Question created", question));
@@ -38,13 +44,15 @@ export class QuestionsController {
   static async updateQuestion(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
       const { id } = req.params;
-      const question = await QuestionsService.updateQuestion(id, req.body);
+      const institutionId = req.user?.institutionId || req.institutionId;
+      const question = await QuestionsService.updateQuestion(id, req.body, institutionId ? institutionId.toString() : undefined);
 
       await logAudit({
         userId: req.user?.id,
         action: "QUESTION_UPDATE",
         details: `Updated question ID: ${id}`,
         ipAddress: req.ip,
+        institutionId: institutionId ? (institutionId as any) : undefined,
       });
 
       return res.status(200).json(ApiResponse.success("Question updated", question));
@@ -56,13 +64,15 @@ export class QuestionsController {
   static async deleteQuestion(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
       const { id } = req.params;
-      await QuestionsService.deleteQuestion(id);
+      const institutionId = req.user?.institutionId || req.institutionId;
+      await QuestionsService.deleteQuestion(id, institutionId ? institutionId.toString() : undefined);
 
       await logAudit({
         userId: req.user?.id,
         action: "QUESTION_DELETE",
         details: `Deleted question ID: ${id}`,
         ipAddress: req.ip,
+        institutionId: institutionId ? (institutionId as any) : undefined,
       });
 
       return res.status(200).json(ApiResponse.success("Question deleted successfully"));
@@ -71,3 +81,4 @@ export class QuestionsController {
     }
   }
 }
+export default QuestionsController;
